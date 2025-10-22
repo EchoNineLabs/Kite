@@ -38,6 +38,10 @@ internal class ScriptManager {
             }
             enableScriptsInstancesSharing()
             implicitReceivers(script)
+            providedProperties(mapOf(
+                "plugin" to Kite.instance!!,
+                "server" to Kite.instance!!.server
+            ))
         }
 
         val compiledScript = BasicJvmScriptingHost().eval(

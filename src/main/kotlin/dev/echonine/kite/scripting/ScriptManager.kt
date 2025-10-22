@@ -16,7 +16,7 @@ import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
 
 internal class ScriptManager {
     val logger = ComponentLogger.logger("Kite-ScriptManager")
-    val loadedScripts = mutableMapOf<String, ScriptContext>()
+    private val loadedScripts = mutableMapOf<String, ScriptContext>()
     fun loadAll() {
         val scriptFiles = gatherAvailableScriptFiles()
         logger.infoRich("<green>Found</green> <white>${scriptFiles.size}</white> <green>script(s) to load.</green>")
@@ -62,6 +62,16 @@ internal class ScriptManager {
         logger.infoRich("<green>Successfully loaded script:</green> <white>${file.path}</white>")
     }
 
+    fun load(name: String): Boolean {
+        val scriptFiles = gatherAvailableScriptFiles()
+        val scriptFile = scriptFiles.find { it.name.withoutExtensions() == name }
+        if (scriptFile != null) {
+            load(scriptFile)
+            return true
+        }
+        return false
+    }
+
     fun unload(scriptName: String) {
         val script = loadedScripts[scriptName]
         if (script != null) {
@@ -79,6 +89,10 @@ internal class ScriptManager {
         logger.infoRich("<green>Successfully unloaded script:</green> <white>${script.name}</white>")
     }
 
+    fun getLoadedScripts(): Map<String, ScriptContext> {
+        return loadedScripts.toMap()
+    }
+
     fun gatherAvailableScriptFiles(): List<File> {
         val scriptsFolder = Kite.instance?.dataFolder?.resolve("scripts")
 
@@ -87,11 +101,17 @@ internal class ScriptManager {
         if (scriptsFolder != null && scriptsFolder.exists() && scriptsFolder.isDirectory) {
             scriptsFolder.walk().forEach { file ->
                 if (file.isFile && file.extension == "kts" && file.name.endsWith(".kite.kts")) {
-                    scriptFiles.add(file)
+                    val scriptName = file.name.withoutExtensions()
+                    if (!loadedScripts.containsKey(scriptName)) {
+                        scriptFiles.add(file)
+                    }
                 } else if (file.isDirectory) {
                     val mainScriptFile = File(file, "main.kite.kts")
                     if (mainScriptFile.exists() && mainScriptFile.isFile) {
-                        scriptFiles.add(mainScriptFile)
+                        val scriptName = mainScriptFile.name.withoutExtensions()
+                        if (!loadedScripts.containsKey(scriptName)) {
+                            scriptFiles.add(mainScriptFile)
+                        }
                     }
                 }
             }

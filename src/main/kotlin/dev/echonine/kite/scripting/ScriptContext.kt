@@ -11,7 +11,7 @@ import org.bukkit.event.Listener
 class ScriptContext(private val scriptName: String) {
     private val onLoadCBs = mutableListOf<() -> Unit>()
     private val onUnloadCBs = mutableListOf<() -> Unit>()
-    private val commands = mutableListOf<KiteCommand>()
+    private val commands = mutableListOf<KiteScriptCommand>()
     val eventListeners = mutableListOf<Listener>()
     val name: String
         get() = scriptName
@@ -34,7 +34,6 @@ class ScriptContext(private val scriptName: String) {
 
     internal fun cleanup() {
         // Unregister event listeners
-        val pluginManager = Kite.instance?.server?.pluginManager
         eventListeners.forEach { listener ->
             HandlerList.unregisterAll(listener)
         }
@@ -43,7 +42,11 @@ class ScriptContext(private val scriptName: String) {
         // Unregister commands
         val commandMap = Kite.instance?.server?.commandMap
         commands.forEach { command ->
-            commandMap?.getCommand(command.name)?.unregister(commandMap)
+            command.unregister(commandMap!!)
+            commandMap.knownCommands.remove(command.name)
+            command.aliases.forEach { alias ->
+                commandMap.knownCommands.remove(alias)
+            }
         }
         Kite.instance?.server?.syncCommands()
         commands.clear()
@@ -67,7 +70,7 @@ class ScriptContext(private val scriptName: String) {
 
     fun command(name: String, builder: CommandBuilder.() -> Unit) {
         val cmdData = CommandBuilder(name).apply(builder)
-        val cmd = KiteCommand(cmdData)
+        val cmd = KiteScriptCommand(cmdData)
         commands.add(cmd)
         Kite.instance?.server?.commandMap?.register("kite-script", cmd)
         Kite.instance?.server?.syncCommands()

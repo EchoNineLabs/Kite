@@ -1,11 +1,12 @@
 package dev.echonine.kite
 
+import dev.echonine.kite.commands.KiteCommands
 import dev.echonine.kite.scripting.ScriptManager
 import org.bukkit.plugin.java.JavaPlugin
 
 @Suppress("unused")
 class Kite : JavaPlugin() {
-    private val scriptManager: ScriptManager = ScriptManager()
+    internal val scriptManager: ScriptManager = ScriptManager()
     companion object {
         var instance: Kite? = null
             private set
@@ -14,6 +15,7 @@ class Kite : JavaPlugin() {
         instance = this
     }
     override fun onEnable() {
+        this.server.commandMap.register("kite", KiteCommands())
         this.scriptManager.loadAll()
     }
 }

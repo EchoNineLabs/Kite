@@ -3,7 +3,7 @@ package dev.echonine.kite.scripting
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 
-class KiteCommand(private val commandBuilder: CommandBuilder) : Command(commandBuilder.name) {
+class KiteScriptCommand(private val commandBuilder: CommandBuilder) : Command(commandBuilder.name) {
     init {
         this.description = commandBuilder.description
         this.permission = commandBuilder.permission

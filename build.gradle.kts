@@ -27,6 +27,7 @@ dependencies {
     library("org.jetbrains.kotlin:kotlin-scripting-dependencies")
     library("org.jetbrains.kotlin:kotlin-scripting-dependencies-maven")
     library("org.jetbrains.kotlin:kotlin-scripting-jvm-host")
+    library("org.jetbrains.kotlin:kotlin-script-runtime")
     library("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 }
 

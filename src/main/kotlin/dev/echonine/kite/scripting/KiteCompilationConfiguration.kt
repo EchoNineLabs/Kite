@@ -1,6 +1,8 @@
 package dev.echonine.kite.scripting
 
+import dev.echonine.kite.Kite
 import org.bukkit.Server
+import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
 import java.security.MessageDigest
@@ -8,14 +10,26 @@ import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.ScriptingHostConfiguration
 import kotlin.script.experimental.jvm.compilationCache
 import kotlin.script.experimental.jvm.dependenciesFromClassContext
+import kotlin.script.experimental.jvm.dependenciesFromClassloader
 import kotlin.script.experimental.jvm.dependenciesFromCurrentContext
 import kotlin.script.experimental.jvm.jvm
+import kotlin.script.experimental.jvm.updateClasspath
+import kotlin.script.experimental.jvm.util.classpathFromClassloader
 import kotlin.script.experimental.jvmhost.CompiledScriptJarsCache
+
+// Why the fuck is this needed.
+// Kotlin scripting seems so fragile
+private val pluginClassPath by lazy {
+    Kite.instance?.server?.pluginManager?.plugins?.flatMap {
+        classpathFromClassloader(it.javaClass.classLoader) ?: emptyList()
+    }
+}
 
 object KiteCompilationConfiguration : ScriptCompilationConfiguration({
     jvm {
         dependenciesFromCurrentContext(wholeClasspath = true)
-        dependenciesFromClassContext(ScriptContext::class, wholeClasspath = true)
+        dependenciesFromClassContext(Kite::class, wholeClasspath = true)
+        updateClasspath(pluginClassPath)
         compilerOptions(
             "-jvm-target", "21",
         )
@@ -29,7 +43,6 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
     )
 
     defaultImports(
-        "org.bukkit.event.*"
     )
 
     ide {

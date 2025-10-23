@@ -17,18 +17,23 @@ repositories {
     }
 }
 
+fun dep(dependencyNotation: String) {
+    dependencies.add("library", dependencyNotation)
+    dependencies.add("api", dependencyNotation)
+}
+
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
 
     // Global libraries
     library(kotlin("stdlib"))
-    library("org.jetbrains.kotlin:kotlin-scripting-jvm")
-    library("org.jetbrains.kotlin:kotlin-scripting-common")
-    library("org.jetbrains.kotlin:kotlin-scripting-dependencies")
-    library("org.jetbrains.kotlin:kotlin-scripting-dependencies-maven")
-    library("org.jetbrains.kotlin:kotlin-scripting-jvm-host")
-    library("org.jetbrains.kotlin:kotlin-script-runtime")
-    library("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    dep("org.jetbrains.kotlin:kotlin-scripting-jvm")
+    dep("org.jetbrains.kotlin:kotlin-scripting-common")
+    dep("org.jetbrains.kotlin:kotlin-scripting-dependencies")
+    dep("org.jetbrains.kotlin:kotlin-scripting-dependencies-maven")
+    dep("org.jetbrains.kotlin:kotlin-scripting-jvm-host")
+    dep("org.jetbrains.kotlin:kotlin-script-runtime")
+    dep("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 }
 
 paper {

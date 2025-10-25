@@ -9,4 +9,7 @@ import kotlin.script.experimental.annotations.KotlinScript
     evaluationConfiguration = KiteEvaluationConfiguration::class
 )
 abstract class Script {
+    fun test() {
+
+    }
 }

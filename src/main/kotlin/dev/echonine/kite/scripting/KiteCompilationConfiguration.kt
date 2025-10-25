@@ -71,14 +71,15 @@ private val bukkitImports = listOf(
     "org.bukkit.util.permissions.*",
 )
 
-private val scriptImports = listOf(
+private val kiteImports = listOf(
     "kotlin.script.experimental.dependencies.DependsOn",
     "kotlin.script.experimental.dependencies.Repository",
     "dev.echonine.kite.scripting.Import",
     "dev.echonine.kite.scripting.CompilerOptions",
+    "dev.echonine.kite.extensions.*"
 )
 
-private val imports = bukkitImports + scriptImports
+private val imports = bukkitImports + kiteImports
 
 object KiteCompilationConfiguration : ScriptCompilationConfiguration({
     defaultImports(imports)
@@ -90,6 +91,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
         dependenciesFromClassContext(KiteCompilationConfiguration::class, wholeClasspath = true)
         compilerOptions(
             "-jvm-target", "21",
+            "-Xcontext-parameters" // Enable context receivers
         )
     }
 

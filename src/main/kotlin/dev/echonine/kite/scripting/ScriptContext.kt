@@ -2,6 +2,7 @@ package dev.echonine.kite.scripting
 
 import dev.echonine.kite.Kite
 import dev.echonine.kite.extensions.syncCommands
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask
 import org.bukkit.event.Event
 import org.bukkit.event.EventPriority
 import org.bukkit.event.HandlerList
@@ -13,6 +14,9 @@ class ScriptContext(private val scriptName: String) {
     private val onUnloadCBs = mutableListOf<() -> Unit>()
     private val commands = mutableListOf<KiteScriptCommand>()
     val eventListeners = mutableListOf<Listener>()
+    val bukkitTasks = mutableListOf<Int>()
+    val foliaTasks = mutableListOf<ScheduledTask>()
+
     val name: String
         get() = scriptName
 
@@ -50,6 +54,18 @@ class ScriptContext(private val scriptName: String) {
         }
         Kite.instance?.server?.syncCommands()
         commands.clear()
+
+        // Cancel scheduled bukkit tasks
+        val scheduler = Kite.instance?.server?.scheduler
+        bukkitTasks.forEach { taskId ->
+            scheduler?.cancelTask(taskId)
+        }
+        bukkitTasks.clear()
+
+        // Cancel Folia scheduled tasks
+        foliaTasks.forEach { task ->
+            task.cancel()
+        }
 
         onLoadCBs.clear()
         onUnloadCBs.clear()

@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm") version "2.2.0"
     id("de.eldoria.plugin-yml.paper") version "0.8.0"
-    id("xyz.jpenilla.run-paper") version "2.3.1"
+    id("xyz.jpenilla.run-paper") version "3.0.2"
     id("com.gradleup.shadow") version "9.2.2"
     `maven-publish`
 }

@@ -6,7 +6,7 @@ import org.bukkit.scheduler.BukkitScheduler
 import org.bukkit.scheduler.BukkitTask
 
 context(context: ScriptContext)
-fun makeBukkitRunnable(task: (BukkitRunnable) -> Unit, isRepeating: Boolean = false): BukkitRunnable {
+private fun makeBukkitRunnable(task: (BukkitRunnable) -> Unit, isRepeating: Boolean = false): BukkitRunnable {
     return object : BukkitRunnable() {
         override fun run() {
             task(this)

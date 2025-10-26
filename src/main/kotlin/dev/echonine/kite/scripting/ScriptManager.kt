@@ -6,6 +6,14 @@ import dev.echonine.kite.extensions.infoRich
 import dev.echonine.kite.extensions.toRich
 import dev.echonine.kite.extensions.warnRich
 import dev.echonine.kite.extensions.withoutExtensions
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger
 import java.io.File
 import kotlin.script.experimental.api.*
@@ -17,20 +25,41 @@ import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
 internal class ScriptManager {
     val logger = ComponentLogger.logger("Kite-ScriptManager")
     private val loadedScripts = mutableMapOf<String, ScriptContext>()
+
     fun loadAll() {
         val scriptFiles = gatherAvailableScriptFiles()
         logger.infoRich("<green>Found</green> <white>${scriptFiles.size}</white> <green>script(s) to load.</green>")
-        for (file in scriptFiles) {
-            load(file)
+
+        val compiledScripts = runBlocking {
+            scriptFiles.map { file ->
+                async(Dispatchers.Default) {
+                    try {
+                        compileScriptAsync(file)
+                    } catch (e: Exception) {
+                        logger.errorRich("<red>Failed to compile script:</red> <white>${file.path}</white>")
+                        null
+                    }
+                }
+            }.awaitAll().filterNotNull()
         }
+
+        compiledScripts.forEach { (scriptName, script) ->
+            loadedScripts[scriptName] = script
+            script.runOnLoad()
+            logger.infoRich("<green>Successfully loaded script:</green> <white>$scriptName</white>")
+        }
+
+        logger.infoRich("<green>Loaded ${loadedScripts.size}/${scriptFiles.size} scripts successfully.</green>")
     }
 
-    fun load(file: File) {
+    private suspend fun compileScriptAsync(file: File): Pair<String, ScriptContext>? = withContext(Dispatchers.IO) {
         logger.infoRich("<green>Compiling script:</green> <white>${file.path}</white>")
         val scriptName = file.name.withoutExtensions()
+
         val scriptDefinition = KiteCompilationConfiguration.with {
             displayName(scriptName)
         }
+
         val script = ScriptContext(scriptName)
         val evalEnv = KiteEvaluationConfiguration.with {
             jvm {
@@ -49,21 +78,38 @@ internal class ScriptManager {
             scriptDefinition,
             evalEnv
         )
+
         compiledScript.reports.forEach {
             when (it.severity) {
                 ScriptDiagnostic.Severity.INFO -> logger.infoRich("[${file.name}] ${it.location?.toRich()}: ${it.message}")
                 ScriptDiagnostic.Severity.WARNING -> logger.warnRich("[${file.name}] ${it.location?.toRich()}: ${it.message}")
                 ScriptDiagnostic.Severity.ERROR -> logger.errorRich("[${file.name}] ${it.location?.toRich()}: ${it.message}")
                 ScriptDiagnostic.Severity.FATAL -> logger.errorRich("[${file.name}] ${it.location?.toRich()}: ${it.message}")
-                else -> {
-                    // Ignore other severities
-                }
+                else -> {}
             }
         }
+
         logger.infoRich("<green>Finished compiling script:</green> <white>${file.path}</white>")
-        loadedScripts[scriptName] = script
-        script.runOnLoad()
-        logger.infoRich("<green>Successfully loaded script:</green> <white>${file.path}</white>")
+
+        scriptName to script
+    }
+
+    fun load(file: File): Job {
+        return CoroutineScope(Dispatchers.Default).launch {
+            val result = try {
+                compileScriptAsync(file)
+            } catch (e: Exception) {
+                logger.errorRich("<red>Failed to compile script:</red> <white>${file.path}</white>")
+                logger.errorRich("<red>Error:</red> ${e.message}")
+                null
+            }
+
+            result?.let { (scriptName, script) ->
+                loadedScripts[scriptName] = script
+                script.runOnLoad()
+                logger.infoRich("<green>Successfully loaded script:</green> <white>${file.path}</white>")
+            }
+        }
     }
 
     fun load(name: String): Boolean {

@@ -47,6 +47,7 @@ paper {
     authors = listOf("Saturn745", "Grabsky")
 }
 
+//runPaper.folia.registerTask() Folia hasn't updated to 1.21.10 yet. Need to wait.
 tasks {
     runServer {
         minecraftVersion("1.21.10")
@@ -58,6 +59,9 @@ tasks {
             modrinth("placeholderapi", "2.11.6")
             modrinth("miniplaceholders", "4zOT6txC") // 3.1.0; ID must be used because same version number is used for multiple platforms.
         }
+    }
+    generatePaperPluginDescription {
+        useDefaultCentralProxy() // Use mavenCentral proxy for downloading dependencies at runtime.
     }
     withType(KotlinCompile::class) {
         compilerOptions {

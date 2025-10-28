@@ -61,7 +61,8 @@ tasks {
         }
     }
     generatePaperPluginDescription {
-        useDefaultCentralProxy() // Use mavenCentral proxy for downloading dependencies at runtime.
+        // Downloading libraries directly from Maven Central may be considered as violation of their Terms of Service.
+        useGoogleMavenCentralProxy()
     }
     withType(KotlinCompile::class) {
         compilerOptions {

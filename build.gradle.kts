@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import xyz.jpenilla.runtask.task.AbstractRun
+import xyz.jpenilla.runpaper.task.RunServer
 
 plugins {
     kotlin("jvm") version "2.2.0"
@@ -48,17 +49,19 @@ paper {
     authors = listOf("Saturn745", "Grabsky")
 }
 
-//runPaper.folia.registerTask() Folia hasn't updated to 1.21.10 yet. Need to wait.
+runPaper.folia.registerTask()
+
 tasks {
-    runServer {
-        minecraftVersion("1.21.10")
+    withType<RunServer> {
+        minecraftVersion("1.21.8")
         downloadPlugins {
             // Downloading ViaVersion and ViaBackwards for testing on lower versions.
             modrinth("viaversion", "5.5.1")
             modrinth("viabackwards", "5.5.1")
-            // Downloading PlaceholderAPI and MiniPlaceholders for testing external APIs.
-            modrinth("placeholderapi", "2.11.6")
-            modrinth("miniplaceholders", "4zOT6txC") // 3.1.0; ID must be used because same version number is used for multiple platforms.
+            // Downloading MiniPlaceholders 3.1.0. ID must be used because same version number is used for multiple platforms.
+            modrinth("miniplaceholders", "4zOT6txC")
+            // Downloading PlaceholderAPI development build (yet to be released) with Folia support.
+            url("https://ci.extendedclip.com/job/PlaceholderAPI/212/artifact/build/libs/PlaceholderAPI-2.11.7-DEV-212.jar")
         }
     }
     generatePaperPluginDescription {

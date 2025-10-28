@@ -21,8 +21,9 @@ repositories {
 }
 
 dependencies {
-    // Kotlin APIs
-    addDualDependency("org.jetbrains.kotlin:kotlin-stdlib:2.2.0")
+    // Kotlin Standard Library
+    paperLibrary(kotlin("stdlib"))
+    // Kotlin Scripting Libraries
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm")
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-common")
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-dependencies")

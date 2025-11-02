@@ -7,18 +7,21 @@ import org.bukkit.event.Event
 import org.bukkit.event.EventPriority
 import org.bukkit.event.HandlerList
 import org.bukkit.event.Listener
+import java.io.File
 
 
-class ScriptContext(private val scriptName: String) {
+class ScriptContext(
+    /** Effective name of the script. Either file name with no extensions or script's folder name. */
+    val name: String,
+    /** File representing the script itself, or 'main.kite.kts' script inside script's folder. */
+    val file: File
+) {
     private val onLoadCBs = mutableListOf<() -> Unit>()
     private val onUnloadCBs = mutableListOf<() -> Unit>()
     private val commands = mutableListOf<KiteScriptCommand>()
     val eventListeners = mutableListOf<Listener>()
     val bukkitTasks = mutableListOf<Int>()
     val foliaTasks = mutableListOf<ScheduledTask>()
-
-    val name: String
-        get() = scriptName
 
     fun onLoad(cb: () -> Unit) {
         onLoadCBs.add(cb)
@@ -37,38 +40,42 @@ class ScriptContext(private val scriptName: String) {
     }
 
     internal fun cleanup() {
-        // Unregister event listeners
-        eventListeners.forEach { listener ->
-            HandlerList.unregisterAll(listener)
-        }
-        eventListeners.clear()
-
-        // Unregister commands
-        val commandMap = Kite.instance?.server?.commandMap
-        commands.forEach { command ->
-            command.unregister(commandMap!!)
-            commandMap.knownCommands.remove(command.name)
-            command.aliases.forEach { alias ->
-                commandMap.knownCommands.remove(alias)
+        try {
+            // Unregister event listeners
+            eventListeners.forEach { listener ->
+                HandlerList.unregisterAll(listener)
             }
-        }
-        Kite.instance?.server?.syncCommands()
-        commands.clear()
+            eventListeners.clear()
 
-        // Cancel scheduled bukkit tasks
-        val scheduler = Kite.instance?.server?.scheduler
-        bukkitTasks.forEach { taskId ->
-            scheduler?.cancelTask(taskId)
-        }
-        bukkitTasks.clear()
+            // Unregister commands
+            val commandMap = Kite.instance?.server?.commandMap
+            commands.forEach { command ->
+                command.unregister(commandMap!!)
+                commandMap.knownCommands.remove(command.name)
+                command.aliases.forEach { alias ->
+                    commandMap.knownCommands.remove(alias)
+                }
+            }
+            Kite.instance?.server?.syncCommands()
+            commands.clear()
 
-        // Cancel Folia scheduled tasks
-        foliaTasks.forEach { task ->
-            task.cancel()
-        }
+            // Cancel scheduled bukkit tasks
+            val scheduler = Kite.instance?.server?.scheduler
+            bukkitTasks.forEach { taskId ->
+                scheduler?.cancelTask(taskId)
+            }
+            bukkitTasks.clear()
 
-        onLoadCBs.clear()
-        onUnloadCBs.clear()
+            // Cancel Folia scheduled tasks
+            foliaTasks.forEach { task ->
+                task.cancel()
+            }
+
+            onLoadCBs.clear()
+            onUnloadCBs.clear()
+        } catch (e: Throwable) {
+            e.printStackTrace()
+        }
     }
 
     inline fun <reified T : Event> on(

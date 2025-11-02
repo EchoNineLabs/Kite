@@ -1,7 +1,6 @@
 package dev.echonine.kite.commands
 
 import dev.echonine.kite.Kite
-import dev.echonine.kite.extensions.withoutExtensions
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 
@@ -110,14 +109,12 @@ class KiteCommands : Command("kite") {
             sender.sendRichMessage("<gradient:#A18AFF:#6F3EFF>[Kite]</gradient> <red>Script is not loaded:</red> <white>$scriptName</white>")
             return
         }
-        Kite.instance?.server?.asyncScheduler?.runNow(Kite.instance!!) {
-            scriptManager.unload(scriptName)
-            val success = scriptManager.load(scriptName)
-            if (success) {
-                sender.sendRichMessage("<gradient:#A18AFF:#6F3EFF>[Kite]</gradient> <#8C63FF>Successfully reloaded script:</#8C63FF> <white>$scriptName</white>")
-            } else {
-                sender.sendRichMessage("<gradient:#A18AFF:#6F3EFF>[Kite]</gradient> <red>Failed to reload script:</red> <white>$scriptName</white>")
-            }
+        scriptManager.unload(scriptName)
+        val success = scriptManager.load(scriptName)
+        if (success) {
+            sender.sendRichMessage("<gradient:#A18AFF:#6F3EFF>[Kite]</gradient> <#8C63FF>Successfully reloaded script:</#8C63FF> <white>$scriptName</white>")
+        } else {
+            sender.sendRichMessage("<gradient:#A18AFF:#6F3EFF>[Kite]</gradient> <red>Failed to reload script:</red> <white>$scriptName</white>")
         }
     }
 
@@ -137,12 +134,18 @@ class KiteCommands : Command("kite") {
                 val loadedScripts = scriptManager?.getLoadedScripts()?.keys ?: emptySet()
                 if (args[0].lowercase() in listOf("unload", "reload")) {
                     completions.addAll(
+                        // TODO: Support for script directories.
                         loadedScripts.filter { it.startsWith(args[1].lowercase()) }
                     )
                 } else if (args[0].lowercase() == "load") {
                     val availableScripts = scriptManager?.gatherAvailableScriptFiles()
-                        ?.map { it.name.withoutExtensions() }
-                        ?.filter { it !in loadedScripts } ?: emptyList()
+                        ?.filter { !scriptManager.isScriptLoaded(it.nameWithoutExtension) }
+                        ?.map {
+                            if (it.isDirectory)
+                                it.parent
+                            else it.nameWithoutExtension
+                        } ?: emptyList()
+
                     completions.addAll(
                         availableScripts.filter { it.startsWith(args[1].lowercase()) }
                     )

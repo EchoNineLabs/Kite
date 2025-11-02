@@ -40,42 +40,38 @@ class ScriptContext(
     }
 
     internal fun cleanup() {
-        try {
-            // Unregister event listeners
-            eventListeners.forEach { listener ->
-                HandlerList.unregisterAll(listener)
-            }
-            eventListeners.clear()
-
-            // Unregister commands
-            val commandMap = Kite.instance?.server?.commandMap
-            commands.forEach { command ->
-                command.unregister(commandMap!!)
-                commandMap.knownCommands.remove(command.name)
-                command.aliases.forEach { alias ->
-                    commandMap.knownCommands.remove(alias)
-                }
-            }
-            Kite.instance?.server?.syncCommands()
-            commands.clear()
-
-            // Cancel scheduled bukkit tasks
-            val scheduler = Kite.instance?.server?.scheduler
-            bukkitTasks.forEach { taskId ->
-                scheduler?.cancelTask(taskId)
-            }
-            bukkitTasks.clear()
-
-            // Cancel Folia scheduled tasks
-            foliaTasks.forEach { task ->
-                task.cancel()
-            }
-
-            onLoadCBs.clear()
-            onUnloadCBs.clear()
-        } catch (e: Throwable) {
-            e.printStackTrace()
+        // Unregister event listeners
+        eventListeners.forEach { listener ->
+            HandlerList.unregisterAll(listener)
         }
+        eventListeners.clear()
+
+        // Unregister commands
+        val commandMap = Kite.instance?.server?.commandMap
+        commands.forEach { command ->
+            command.unregister(commandMap!!)
+            commandMap.knownCommands.remove(command.name)
+            command.aliases.forEach { alias ->
+                commandMap.knownCommands.remove(alias)
+            }
+        }
+        Kite.instance?.server?.syncCommands()
+        commands.clear()
+
+        // Cancel scheduled bukkit tasks
+        val scheduler = Kite.instance?.server?.scheduler
+        bukkitTasks.forEach { taskId ->
+            scheduler?.cancelTask(taskId)
+        }
+        bukkitTasks.clear()
+
+        // Cancel Folia scheduled tasks
+        foliaTasks.forEach { task ->
+            task.cancel()
+        }
+
+        onLoadCBs.clear()
+        onUnloadCBs.clear()
     }
 
     inline fun <reified T : Event> on(

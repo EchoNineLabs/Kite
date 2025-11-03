@@ -13,8 +13,8 @@ import java.io.File
 class ScriptContext(
     /** Effective name of the script. Either file name with no extensions or script's folder name. */
     val name: String,
-    /** File representing the script itself, or 'main.kite.kts' script inside script's folder. */
-    val file: File
+    /** File representing entry point file of the script. It is either the script itself, or main.kite.kts file inside the script's folder. */
+    val entryPoint: File
 ) {
     private val onLoadCBs = mutableListOf<() -> Unit>()
     private val onUnloadCBs = mutableListOf<() -> Unit>()

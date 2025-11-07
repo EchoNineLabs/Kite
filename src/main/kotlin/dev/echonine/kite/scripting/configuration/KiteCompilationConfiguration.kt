@@ -110,13 +110,13 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 }
                 // Configuring compilation cache.
                 compilationCache(CompiledScriptJarsCache { script, compilationConfiguration ->
-                    // Getting the MD5 cache and including it in the file name.
+                    // Getting the MD5 checksum and including it in the file name.
+                    // MD5 checksum acts as a file identifier here.
                     val hash = script.text.toByteArray().let {
                         val md = MessageDigest.getInstance("MD5")
                         md.update(it)
                         md.digest().joinToString("") { byte -> "%02x".format(byte) }
                     }
-                    // Returning
                     return@CompiledScriptJarsCache File(cacheDirectory, "${compilationConfiguration[displayName]}.${hash}.cache.jar")
                 })
             }

@@ -27,12 +27,7 @@ import kotlin.script.experimental.api.providedProperties
 import kotlin.script.experimental.api.with
 import kotlin.script.experimental.host.toScriptSource
 import kotlin.script.experimental.jvm.baseClassLoader
-import kotlin.script.experimental.jvm.dependenciesFromClassContext
-import kotlin.script.experimental.jvm.dependenciesFromClassloader
-import kotlin.script.experimental.jvm.dependenciesFromCurrentContext
 import kotlin.script.experimental.jvm.jvm
-import kotlin.script.experimental.jvm.updateClasspath
-import kotlin.script.experimental.jvm.util.classpathFromClassloader
 import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
 
 internal class ScriptManager(val plugin: Kite) {

@@ -7,6 +7,7 @@ import dev.echonine.kite.scripting.ScriptContext
 import org.bukkit.Server
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
+import java.security.MessageDigest
 import kotlin.script.experimental.api.KotlinType
 import kotlin.script.experimental.api.ScriptAcceptedLocation
 import kotlin.script.experimental.api.ScriptCollectedData
@@ -16,6 +17,8 @@ import kotlin.script.experimental.api.asSuccess
 import kotlin.script.experimental.api.baseClass
 import kotlin.script.experimental.api.collectedAnnotations
 import kotlin.script.experimental.api.defaultImports
+import kotlin.script.experimental.api.displayName
+import kotlin.script.experimental.api.hostConfiguration
 import kotlin.script.experimental.api.ide
 import kotlin.script.experimental.api.implicitReceivers
 import kotlin.script.experimental.api.importScripts
@@ -23,10 +26,13 @@ import kotlin.script.experimental.api.providedProperties
 import kotlin.script.experimental.api.refineConfiguration
 import kotlin.script.experimental.host.FileBasedScriptSource
 import kotlin.script.experimental.host.FileScriptSource
+import kotlin.script.experimental.host.ScriptingHostConfiguration
+import kotlin.script.experimental.jvm.compilationCache
 import kotlin.script.experimental.jvm.dependenciesFromClassContext
 import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvm.updateClasspath
 import kotlin.script.experimental.jvm.util.classpathFromClassloader
+import kotlin.script.experimental.jvmhost.CompiledScriptJarsCache
 
 // Resolves all plugins' classpaths in order to make compiler recognize APIs of external plugins.
 val updatedClasspath by lazy {
@@ -84,31 +90,37 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
         acceptedLocations(ScriptAcceptedLocation.Everywhere)
     }
 
-//    hostConfiguration(ScriptingHostConfiguration {
-//        jvm {
-//            val runningLocation = System.getProperty("user.dir") ?: "."
-//            val cacheBaseDir = File(runningLocation, "plugins/Kite/cache")
-//            //TODO: Swap to Kite plugin data folder. Since this is a scripting module, we don't have direct access to the plugin instance here.
-//            if (!cacheBaseDir.exists()) {
-//                cacheBaseDir.mkdirs()
-//            }
-//
-//            if (cacheBaseDir.exists() && cacheBaseDir.isDirectory) {
-//                compilationCache(
-//                    CompiledScriptJarsCache { script, scriptCompilationConfiguration ->
-//                        val scriptDisplayName = scriptCompilationConfiguration[displayName] ?: "script"
-//                        // get the MD5 hash of the script text to use as part of the file name
-//                        val hash = script.text.toByteArray().let {
-//                            val md = MessageDigest.getInstance("MD5")
-//                            md.update(it)
-//                            md.digest().joinToString("") { byte -> "%02x".format(byte) }
-//                        }
-//                        val fileName = "${scriptDisplayName}-${hash}.jar"
-//                        File(cacheBaseDir, fileName)
-//                    }
-//                )
-//            }
-//        }
-//    })
+    hostConfiguration(ScriptingHostConfiguration {
+        jvm {
+            // Kite instance should not be null at the point this code is called.
+            val cacheDirectory = File(Kite.instance!!.dataFolder, "cache")
+            // Creating directories in case they don't exist yet.
+            cacheDirectory.mkdirs()
+            if (cacheDirectory.isDirectory) {
+                // Purging old cache files except the most recent one for each script. Filtering .cache.jar files and grouping by the script name.
+                cacheDirectory.listFiles()?.filter { it.name.endsWith(".cache.jar") }?.groupBy { it.name.split(".").dropLast(2) }
+                    ?.forEach { (_, files) ->
+                        // Skipping scripts with no stale cache files.
+                        if (files.size <= 1)
+                            return@forEach
+                        // Removing all stale cache files.
+                        files.maxByOrNull { it.lastModified() }?.let { newestFile ->
+                            files.filter { it != newestFile }.forEach { it.delete() }
+                        }
+                }
+                // Configuring compilation cache.
+                compilationCache(CompiledScriptJarsCache { script, compilationConfiguration ->
+                    // Getting the MD5 cache and including it in the file name.
+                    val hash = script.text.toByteArray().let {
+                        val md = MessageDigest.getInstance("MD5")
+                        md.update(it)
+                        md.digest().joinToString("") { byte -> "%02x".format(byte) }
+                    }
+                    // Returning
+                    return@CompiledScriptJarsCache File(cacheDirectory, "${compilationConfiguration[displayName]}.${hash}.cache.jar")
+                })
+            }
+        }
+    })
 })
 

@@ -92,8 +92,8 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
 
     hostConfiguration(ScriptingHostConfiguration {
         jvm {
-            // Kite instance should not be null at the point this code is called.
-            val cacheDirectory = File(Kite.instance!!.dataFolder, "cache")
+            // Getting the cache directory from plugin's data folder or from configured / default path if running with no server.
+            val cacheDirectory = File(Kite.instance?.dataFolder?.path ?: System.getProperty("user.dir", "."), "cache")
             // Creating directories in case they don't exist yet.
             cacheDirectory.mkdirs()
             if (cacheDirectory.isDirectory) {

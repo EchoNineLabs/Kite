@@ -134,18 +134,12 @@ class KiteCommands : Command("kite") {
                 val loadedScripts = scriptManager?.getLoadedScripts()?.keys ?: emptySet()
                 if (args[0].lowercase() in listOf("unload", "reload")) {
                     completions.addAll(
-                        // TODO: Support for script directories.
                         loadedScripts.filter { it.startsWith(args[1].lowercase()) }
                     )
                 } else if (args[0].lowercase() == "load") {
                     val availableScripts = scriptManager?.gatherAvailableScriptFiles()
-                        ?.filter { !scriptManager.isScriptLoaded(it.nameWithoutExtension) }
-                        ?.map {
-                            if (it.isDirectory)
-                                it.parent
-                            else it.nameWithoutExtension
-                        } ?: emptyList()
-
+                        ?.filter { !scriptManager.isScriptLoaded(it.name) }
+                        ?.map { it.name } ?: emptyList()
                     completions.addAll(
                         availableScripts.filter { it.startsWith(args[1].lowercase()) }
                     )

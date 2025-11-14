@@ -9,16 +9,17 @@ import dev.echonine.kite.scripting.configuration.KiteCompilationConfiguration
 import dev.echonine.kite.scripting.configuration.KiteEvaluationConfiguration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger
 import org.jetbrains.annotations.Unmodifiable
 import java.io.File
 import java.util.concurrent.Executors
+import kotlin.coroutines.resume
 import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.script.experimental.api.ScriptDiagnostic.Severity
 import kotlin.script.experimental.api.displayName
@@ -133,8 +134,8 @@ internal class ScriptManager(val plugin: Kite) {
         return@withContext if (compiledScript !is ResultWithDiagnostics.Failure) script else null
     }
 
-    // Compiles and loads specified script. Name must be either script's file name, or name of directory containing main.kite.kts file.
-    fun load(name: String): Boolean {
+    // Compiles and loads specified script. Name must be either script's file name, or name of directory containing main.kite.kts file.su
+    suspend fun load(name: String): Boolean {
         // Finding script by the specified name. Returning false if not found.
         val holder = ScriptHolder.fromName(name, scriptsFolder) ?: return false
         // Returning false if already loaded.
@@ -146,15 +147,17 @@ internal class ScriptManager(val plugin: Kite) {
     }
 
     // Compiles and loads specified script file.
-    private fun load(holder: ScriptHolder): Job {
-        return CoroutineScope(Dispatchers.Default).launch {
+    private suspend fun load(holder: ScriptHolder): Boolean = suspendCancellableCoroutine { coroutine ->
+        CoroutineScope(Dispatchers.Default).launch {
             try {
                 // Compiling and loading specified script.
                 compileScriptAsync(holder)?.let { script ->
-                    plugin.server.globalRegionScheduler.run(plugin, {
+                    plugin.server.globalRegionScheduler.execute(plugin, {
                         loadedScripts[script.name] = script
                         script.runOnLoad()
                         logger.infoRich("Script <yellow>${holder.name}<reset> has been successfully loaded.")
+                        // Resuming the coroutine.
+                        coroutine.resume(true)
                     })
                 }
             } catch (e: Exception) {
@@ -163,25 +166,27 @@ internal class ScriptManager(val plugin: Kite) {
                 logger.errorRich("  (1) ${e.javaClass.name}: ${e.message}")
                 if (e.cause != null)
                     logger.errorRich("  (2) ${e.cause!!.javaClass.name}: ${e.cause!!.message}")
+                // Resuming the coroutine.
+                coroutine.resume(false)
             }
         }
     }
 
     // Unloads specified script by it's name. Returns false if script isn't loaded.
-    fun unload(scriptName: String): Boolean {
-        return loadedScripts[scriptName]?.let {
-            unload(it)
-            return@let true
+    suspend fun unload(name: String): Boolean {
+        return loadedScripts[name]?.let {
+            return unload(it)
         } ?: false
     }
 
     // Unloads specified script by it's context.
-    private fun unload(script: ScriptContext) {
-        plugin.server.globalRegionScheduler.run(plugin, {
+    private suspend fun unload(script: ScriptContext): Boolean = suspendCancellableCoroutine { coroutine ->
+        plugin.server.globalRegionScheduler.execute(plugin, {
             script.runOnUnload()
             script.cleanup()
             loadedScripts.remove(script.name)
-            logger.infoRich("<green>Successfully unloaded script:</green> <white>${script.name}</white>")
+            // Completing the future as script has been successfully (?) unloaded.
+            coroutine.resume(true)
         })
     }
 

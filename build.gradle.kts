@@ -50,21 +50,26 @@ paper {
 runPaper.folia.registerTask()
 
 tasks {
-    withType<RunServer> {
+    // Shared configuration for runServer and runFolia tasks.
+    withType(RunServer::class) {
         minecraftVersion("1.21.8")
         downloadPlugins {
-            // Downloading ViaVersion and ViaBackwards for testing on lower versions.
+            // Downloading ViaVersion and ViaBackwards for testing on lower (or higher) versions.
             modrinth("viaversion", "5.5.1")
             modrinth("viabackwards", "5.5.1")
             // Downloading MiniPlaceholders 3.1.0. ID must be used because same version number is used for multiple platforms.
             modrinth("miniplaceholders", "4zOT6txC")
-            // Downloading PlaceholderAPI development build (yet to be released) with Folia support.
-            url("https://ci.extendedclip.com/job/PlaceholderAPI/212/artifact/build/libs/PlaceholderAPI-2.11.7-DEV-212.jar")
+            // Downloading PlaceholderAPI with Folia support included starting from 2.11.7.
+            modrinth("placeholderapi", "2.11.7")
         }
     }
-    generatePaperPluginDescription {
-        // Downloading libraries directly from Maven Central may be considered as violation of their Terms of Service.
-        useGoogleMavenCentralProxy()
+    // Configuring 'runServer' task to use JetBrains' JDK 21 for expanded hot-swap features.
+    withType(AbstractRun::class) {
+        javaLauncher = project.javaToolchains.launcherFor {
+            vendor = JvmVendorSpec.JETBRAINS
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+        jvmArgs("-XX:+AllowEnhancedClassRedefinition", "-Dcom.mojang.eula.agree=true", "-Dnet.kyori.ansi.colorLevel=truecolor")
     }
     withType(KotlinCompile::class) {
         compilerOptions {
@@ -73,13 +78,10 @@ tasks {
             freeCompilerArgs = listOf("-Xcontext-parameters")
         }
     }
-    // Configuring 'runServer' task to use JetBrains' JDK 21 for expanded hot-swap features.
-    withType(AbstractRun::class) {
-        javaLauncher = project.javaToolchains.launcherFor {
-            vendor = JvmVendorSpec.of("JetBrains")
-            languageVersion = JavaLanguageVersion.of(21)
-        }
-        jvmArgs("-XX:+AllowEnhancedClassRedefinition", "-Dcom.mojang.eula.agree=true", "-Dnet.kyori.ansi.colorLevel=truecolor")
+    generatePaperPluginDescription {
+        // Downloading libraries directly from Maven Central may be considered a violation of their Terms of Service.
+        // Usage of PaperMC repository is highly discouraged and this leaves Google's mirror as the most reliable option.
+        useGoogleMavenCentralProxy()
     }
 }
 

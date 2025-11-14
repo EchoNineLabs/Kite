@@ -16,6 +16,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger
+import org.jetbrains.annotations.ApiStatus
+import org.jetbrains.annotations.ApiStatus.Internal
 import org.jetbrains.annotations.Unmodifiable
 import java.io.File
 import java.util.concurrent.Executors
@@ -134,7 +136,7 @@ internal class ScriptManager(val plugin: Kite) {
         return@withContext if (compiledScript !is ResultWithDiagnostics.Failure) script else null
     }
 
-    // Compiles and loads specified script. Name must be either script's file name, or name of directory containing main.kite.kts file.su
+    // Compiles and loads specified script. Name must be either script's file name, or name of directory containing main.kite.kts file.
     suspend fun load(name: String): Boolean {
         // Finding script by the specified name. Returning false if not found.
         val holder = ScriptHolder.fromName(name, scriptsFolder) ?: return false
@@ -180,12 +182,13 @@ internal class ScriptManager(val plugin: Kite) {
     }
 
     // Unloads specified script by it's context.
+    @Internal
     private suspend fun unload(script: ScriptContext): Boolean = suspendCancellableCoroutine { coroutine ->
         plugin.server.globalRegionScheduler.execute(plugin, {
             script.runOnUnload()
             script.cleanup()
             loadedScripts.remove(script.name)
-            // Completing the future as script has been successfully (?) unloaded.
+            // Resuming the coroutine.
             coroutine.resume(true)
         })
     }

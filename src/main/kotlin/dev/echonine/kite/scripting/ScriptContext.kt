@@ -1,7 +1,7 @@
 package dev.echonine.kite.scripting
 
 import dev.echonine.kite.Kite
-import dev.echonine.kite.extensions.syncCommands
+import dev.echonine.kite.util.extensions.syncCommands
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask
 import org.bukkit.event.Event
 import org.bukkit.event.EventPriority

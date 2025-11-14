@@ -4,6 +4,8 @@ import dev.echonine.kite.Kite
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 
+// TO-DO: Migrate commands to some framework to keep the code as clean as possible.
+// TO-DO: Configurable messages.
 class KiteCommands : Command("kite") {
     init {
         this.description = "Kite management commands"

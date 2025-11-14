@@ -1,4 +1,4 @@
-package dev.echonine.kite.extensions
+package dev.echonine.kite.util.extensions
 
 import org.bukkit.Server
 

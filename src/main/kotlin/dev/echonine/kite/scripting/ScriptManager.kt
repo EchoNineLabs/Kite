@@ -1,13 +1,12 @@
 package dev.echonine.kite.scripting
 
 import dev.echonine.kite.Kite
-import dev.echonine.kite.extensions.errorRich
-import dev.echonine.kite.extensions.infoRich
-import dev.echonine.kite.extensions.nameWithoutExtensions
-import dev.echonine.kite.extensions.warnRich
+import dev.echonine.kite.util.extensions.errorRich
+import dev.echonine.kite.util.extensions.infoRich
+import dev.echonine.kite.util.extensions.nameWithoutExtensions
+import dev.echonine.kite.util.extensions.warnRich
 import dev.echonine.kite.scripting.configuration.KiteCompilationConfiguration
 import dev.echonine.kite.scripting.configuration.KiteEvaluationConfiguration
-import io.papermc.paper.threadedregions.scheduler.GlobalRegionScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,27 +29,6 @@ import kotlin.script.experimental.host.toScriptSource
 import kotlin.script.experimental.jvm.baseClassLoader
 import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
-
-data class ScriptHolder(val name: String, val entryPoint: File) {
-
-    companion object {
-        fun fromName(name: String, directory: File): ScriptHolder? {
-            val files = directory.listFiles() ?: emptyArray()
-            // Returning ScriptHolder of specified script file, if exists.
-            if (files.contains(File(directory, "$name.kite.kts")))
-                return ScriptHolder(name, File(directory, "$name.kite.kts"))
-            // Looking for a script directory with specified name.
-            val scriptFolder = files.find {
-                it.isDirectory && it.nameWithoutExtensions == name && File(it, "main.kite.kts").exists()
-            }
-            // Returning ScriptHolder of specified script directory, if exists.
-            if (scriptFolder != null)
-                return ScriptHolder(name, File(scriptFolder, "main.kite.kts"))
-            // Otherwise, no such script exist, returning null.
-            return null
-        }
-    }
-}
 
 internal class ScriptManager(val plugin: Kite) {
 

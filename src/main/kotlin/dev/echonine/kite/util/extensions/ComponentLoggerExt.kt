@@ -1,4 +1,4 @@
-package dev.echonine.kite.extensions
+package dev.echonine.kite.util.extensions
 
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger
 import net.kyori.adventure.text.minimessage.MiniMessage

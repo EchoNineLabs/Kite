@@ -1,7 +1,7 @@
 package dev.echonine.kite.scripting.configuration
 
 import dev.echonine.kite.Kite
-import dev.echonine.kite.scripting.Import
+import dev.echonine.kite.api.annotations.Import
 import dev.echonine.kite.scripting.Script
 import dev.echonine.kite.scripting.ScriptContext
 import org.bukkit.Server
@@ -38,7 +38,7 @@ import kotlin.script.experimental.jvmhost.CompiledScriptJarsCache
 val updatedClasspath by lazy {
     Kite.instance?.server?.pluginManager?.plugins?.flatMap {
         classpathFromClassloader(it.javaClass.classLoader) ?: emptyList()
-    }
+    } ?: emptyList()
 }
 
 @Suppress("JavaIoSerializableObjectMustHaveReadResolve")
@@ -50,7 +50,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
         // Bukkit (More will be specified later)
         "org.bukkit.*",
         // Kite
-        "dev.echonine.kite.extensions.*",
+        "dev.echonine.kite.api.*",
     )
     // Specifying the base class. For some reason @KotlinScript is not picked up automatically.
     baseClass(KotlinType(Script::class))

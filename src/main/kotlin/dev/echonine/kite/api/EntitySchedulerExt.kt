@@ -1,4 +1,4 @@
-package dev.echonine.kite.extensions
+package dev.echonine.kite.api
 
 import dev.echonine.kite.Kite
 import dev.echonine.kite.scripting.ScriptContext

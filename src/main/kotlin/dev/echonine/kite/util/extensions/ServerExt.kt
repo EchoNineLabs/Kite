@@ -1,7 +1,6 @@
-package dev.echonine.kite.extensions
+package dev.echonine.kite.util.extensions
 
 import org.bukkit.Server
-
 
 fun Server.syncCommands() {
     this.onlinePlayers.forEach {

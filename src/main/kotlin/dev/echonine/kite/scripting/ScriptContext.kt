@@ -1,24 +1,27 @@
 package dev.echonine.kite.scripting
 
 import dev.echonine.kite.Kite
-import dev.echonine.kite.extensions.syncCommands
+import dev.echonine.kite.util.extensions.syncCommands
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask
 import org.bukkit.event.Event
 import org.bukkit.event.EventPriority
 import org.bukkit.event.HandlerList
 import org.bukkit.event.Listener
+import java.io.File
 
 
-class ScriptContext(private val scriptName: String) {
+class ScriptContext(
+    /** Effective name of the script. Either file name with no extensions or script's folder name. */
+    val name: String,
+    /** File representing entry point file of the script. It is either the script itself, or main.kite.kts file inside the script's folder. */
+    val entryPoint: File
+) {
     private val onLoadCBs = mutableListOf<() -> Unit>()
     private val onUnloadCBs = mutableListOf<() -> Unit>()
     private val commands = mutableListOf<KiteScriptCommand>()
     val eventListeners = mutableListOf<Listener>()
     val bukkitTasks = mutableListOf<Int>()
     val foliaTasks = mutableListOf<ScheduledTask>()
-
-    val name: String
-        get() = scriptName
 
     fun onLoad(cb: () -> Unit) {
         onLoadCBs.add(cb)

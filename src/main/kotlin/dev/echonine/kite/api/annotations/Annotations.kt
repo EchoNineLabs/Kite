@@ -1,4 +1,4 @@
-package dev.echonine.kite.scripting
+package dev.echonine.kite.api.annotations
 
 /**
  * Import other script(s)

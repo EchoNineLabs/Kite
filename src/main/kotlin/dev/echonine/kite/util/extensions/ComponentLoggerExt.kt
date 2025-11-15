@@ -1,5 +1,4 @@
-package dev.echonine.kite.extensions
-
+package dev.echonine.kite.util.extensions
 
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger
 import net.kyori.adventure.text.minimessage.MiniMessage
@@ -9,11 +8,11 @@ fun ComponentLogger.infoRich(message: String) {
 }
 
 fun ComponentLogger.warnRich(message: String) {
-    this.warn(MiniMessage.miniMessage().deserialize(message))
+    this.warn(MiniMessage.miniMessage().deserialize("<yellow>$message)"))
 }
 
 fun ComponentLogger.errorRich(message: String) {
-    this.error(MiniMessage.miniMessage().deserialize(message))
+    this.error(MiniMessage.miniMessage().deserialize("<red>$message"))
 }
 
 fun ComponentLogger.debugRich(message: String) {

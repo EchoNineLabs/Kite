@@ -114,7 +114,7 @@ internal class ScriptManager(val plugin: Kite) {
                 "server" to plugin.server
             ))
         }
-        // Evaluating / running compiled script.
+        // Compiling the script. Top-level declarations and method calls will be evaluated. onEnable is not called in this step.
         val compiledScript = BasicJvmScriptingHost().eval(holder.entryPoint.toScriptSource(), compilationConfiguration, evaluationConfiguration)
         // Logging diagnostics from a single-thread queue. Otherwise messages can be displayed in wrong order due to parallel compilation.
         logExecutor.submit {
@@ -122,7 +122,7 @@ internal class ScriptManager(val plugin: Kite) {
             if (compiledScript is ResultWithDiagnostics.Failure)
                 logger.errorRich("Script <yellow>${holder.name}</yellow> reported <yellow>$errorCount</yellow> error(s) during compilation:")
             compiledScript.reports.forEach {
-                val message = "  <yellow>(${it.sourcePath?.substringAfterLast("/")}, line ${it.location?.start?.line ?: "???"}, col ${it.location?.start?.col ?: "???"})</yellow> ${it.message}"
+                val message = "<yellow>(${script.name}, ${it.sourcePath?.substringAfterLast("/")}, line ${it.location?.start?.line ?: "???"}, col ${it.location?.start?.col ?: "???"})</yellow> ${it.message}"
                 when (it.severity) {
                     Severity.INFO -> logger.infoRich(message)
                     Severity.WARNING -> logger.warnRich(message)

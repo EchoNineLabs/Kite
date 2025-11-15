@@ -19,7 +19,7 @@ class Kite : JavaPlugin() {
         // Initializing ScriptManager and loading all scripts.
         this.scriptManager = ScriptManager(this)
         this.scriptManager.loadAll()
-        // Registering
+        // Registering command(s).
         this.server.commandMap.register("kite", KiteCommands(this))
     }
 

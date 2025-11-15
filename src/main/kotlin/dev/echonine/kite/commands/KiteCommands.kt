@@ -7,8 +7,6 @@ import kotlinx.coroutines.launch
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 
-// TO-DO: Migrate commands to some framework to keep the code as clean as possible.
-// TO-DO: Configurable messages.
 class KiteCommands(val plugin: Kite) : Command("kite") {
 
     init {
@@ -17,48 +15,35 @@ class KiteCommands(val plugin: Kite) : Command("kite") {
         this.permission = "kite.manage"
     }
 
-    override fun execute(
-        sender: CommandSender,
-        commandLabel: String,
-        args: Array<out String>
-    ): Boolean {
+    override fun execute(sender: CommandSender, commandLabel: String, args: Array<out String>): Boolean {
         when (args.getOrNull(0)?.lowercase() ?: "help") {
             "list" -> listScripts(sender)
             "load" -> {
-                if (args.size < 2) {
-                    sender.sendRichMessage("<dark_gray>› <red>Please specify a script name to load.")
-                } else {
-                    val scriptName = args[1]
-                    loadScript(sender, scriptName)
-                }
+                if (args.size >= 2)
+                    loadScript(sender, args[1])
+                else sender.sendRichMessage("<dark_gray>› <gray>Syntax: <#C06CEF>/kite load <#EED4FC><script_name>")
             }
             "unload" -> {
-                if (args.size < 2) {
-                    sender.sendRichMessage("<dark_gray>› <red>Please specify a script name to unload.")
-                } else {
-                    val scriptName = args[1]
-                    unloadScript(sender, scriptName)
-                }
+                if (args.size >= 2)
+                    unloadScript(sender, args[1])
+                else sender.sendRichMessage("<dark_gray>› <gray>Syntax: <#C06CEF>/kite unload <#EED4FC><script_name>")
             }
             "reload" -> {
-                if (args.size < 2) {
-                    sender.sendRichMessage("<dark_gray>› <red>Please specify a script name to reload.")
-                } else {
-                    val scriptName = args[1]
-                    reloadScript(sender, scriptName)
-                }
+                if (args.size >= 2)
+                    reloadScript(sender, args[1])
+                else sender.sendRichMessage("<dark_gray>› <gray>Syntax: <#C06CEF>/kite reload <#EED4FC><script_name>")
             }
             "help" -> {
                 sender.sendRichMessage(
                     """
-                        <#777D94>──────── <gradient:#A18AFF:#6F3EFF><bold>Kite Commands</bold></gradient> <#777D94>────────
-        
-                        <#8C63FF>/kite list</#8C63FF> <#E0E6F2>– Show all loaded scripts.</#E0E6F2>
-                        <#8C63FF>/kite load <white><script_name></white></#8C63FF> <#E0E6F2>– Load a script by name.</#E0E6F2>
-                        <#8C63FF>/kite unload <white><script_name></white></#8C63FF> <#E0E6F2>– Unload a loaded script.</#E0E6F2>
-                        <#8C63FF>/kite reload <white><script_name></white></#8C63FF> <#E0E6F2>– Reload a script.</#E0E6F2>
-        
-                        <#777D94>────────────────────────────</#777D94>
+                        <gray><st>${" ".repeat(29)}</st>  <#C06CEF>Commands</#C06CEF>  <st>${" ".repeat(29)}</st>
+                        
+                        <dark_gray>›  <#C06CEF>/kite list <gray>– <white>Shows list of all available scripts.
+                        <dark_gray>›  <#C06CEF>/kite load <#EED4FC><script_name> <gray>– <white>Loads a script by name.
+                        <dark_gray>›  <#C06CEF>/kite unload <#EED4FC><script_name> <gray>– <white>Unloads a loaded script.
+                        <dark_gray>›  <#C06CEF>/kite reload <#EED4FC><script_name> <gray>– <white>Reloads a script.
+                        
+                        <gray><st>${" ".repeat(74)}</st>
                     """.trimIndent()
                 )
             }
@@ -67,15 +52,18 @@ class KiteCommands(val plugin: Kite) : Command("kite") {
     }
 
     private fun listScripts(sender: CommandSender) {
-        val loadedScripts = plugin.scriptManager.getLoadedScripts()
-        if (loadedScripts.isEmpty()) {
-            sender.sendRichMessage("<gradient:#A18AFF:#6F3EFF>[Kite]</gradient> <#E0E6F2>No scripts are currently loaded.</#E0E6F2>")
+        val scripts = (plugin.scriptManager.gatherAvailableScriptFiles().map { it.name } + plugin.scriptManager.getLoadedScripts().keys).distinctBy { it }
+        if (scripts.isEmpty()) {
+            sender.sendRichMessage("<dark_gray>› <red>No scripts were found.")
             return
         }
-        sender.sendRichMessage("<gradient:#A18AFF:#6F3EFF>[Kite]</gradient> <#E0E6F2>Loaded scripts:</#E0E6F2>")
-        loadedScripts.forEach {
-            sender.sendRichMessage("<gradient:#A18AFF:#6F3EFF>[Kite]</gradient> <#8C63FF>- ${it.key}</#8C63FF>")
+        sender.sendRichMessage("<gray><st>${" ".repeat(30)}</st>  <#C06CEF>Scripts</#C06CEF>  <st>${" ".repeat(30)}</st><newline>")
+        scripts.forEach { name ->
+            if (plugin.scriptManager.isScriptLoaded(name))
+                sender.sendRichMessage("<dark_gray>›  <green>$name <gray>(Loaded)")
+            else sender.sendRichMessage("<dark_gray>›  <red>$name")
         }
+        sender.sendRichMessage("<newline><gray><st>${" ".repeat(73)}</st>")
     }
 
     private fun loadScript(sender: CommandSender, scriptName: String) = CoroutineScope(Dispatchers.IO).launch {
@@ -104,34 +92,20 @@ class KiteCommands(val plugin: Kite) : Command("kite") {
         else sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> is not loaded.")
     }
 
-    override fun tabComplete(
-        sender: CommandSender,
-        alias: String,
-        args: Array<String>
-    ): MutableList<String> {
-        val completions = mutableListOf<String>()
-        when (args.size) {
-            1 -> {
-                val subcommands = listOf("list", "load", "unload", "reload")
-                completions.addAll(subcommands.filter { it.startsWith(args[0].lowercase()) })
+    override fun tabComplete(sender: CommandSender, alias: String, args: Array<String>): List<String> {
+        if (args.size == 1)
+            return listOf("list", "load", "unload", "reload").filter { it.startsWith(args[0].lowercase()) }
+        else if (args.size == 2)
+            return when (args[0]) {
+                // Returning list of all loaded scripts.
+                "unload", "reload" -> plugin.scriptManager.getLoadedScripts().keys.filter { it.startsWith(args[1].lowercase()) }
+                // Returning list of all not loaded scripts.
+                "load" -> plugin.scriptManager.gatherAvailableScriptFiles().map { it.name }.minus(plugin.scriptManager.getLoadedScripts().keys)
+                // No completions available for this input - returning an empty list.
+                else -> emptyList()
             }
-            2 -> {
-                val loadedScripts = plugin.scriptManager.getLoadedScripts().keys
-                if (args[0].lowercase() in listOf("unload", "reload")) {
-                    completions.addAll(
-                        loadedScripts.filter { it.startsWith(args[1].lowercase()) }
-                    )
-                } else if (args[0].lowercase() == "load") {
-                    val availableScripts = plugin.scriptManager.gatherAvailableScriptFiles()
-                        .filter { !plugin.scriptManager.isScriptLoaded(it.name) }
-                        .map { it.name }
-                    completions.addAll(
-                        availableScripts.filter { it.startsWith(args[1].lowercase()) }
-                    )
-                }
-            }
-        }
-        return completions
+        // No completions available for this input - returning an empty list.
+        else return emptyList()
     }
 
 }

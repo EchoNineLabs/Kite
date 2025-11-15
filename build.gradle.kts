@@ -32,7 +32,7 @@ dependencies {
     // https://github.com/Kotlin/kotlinx.coroutines
     addDualDependency("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     // https://github.com/PaperMC/Paper
-    addDualDependency("io.papermc.paper:paper-api:1.21.6-R0.1-SNAPSHOT")
+    api("io.papermc.paper:paper-api:1.21.6-R0.1-SNAPSHOT")
 }
 
 paper {

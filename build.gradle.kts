@@ -78,11 +78,6 @@ tasks {
             freeCompilerArgs = listOf("-Xcontext-parameters")
         }
     }
-    generatePaperPluginDescription {
-        // Downloading libraries directly from Maven Central may be considered a violation of their Terms of Service.
-        // Usage of PaperMC repository is highly discouraged and this leaves Google's mirror as the most reliable option.
-        useGoogleMavenCentralProxy()
-    }
 }
 
 publishing.publications {

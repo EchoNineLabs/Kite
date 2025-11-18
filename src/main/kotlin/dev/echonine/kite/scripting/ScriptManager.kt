@@ -64,7 +64,7 @@ internal class ScriptManager(val plugin: Kite) {
     // Compiles and loads all available scripts.
     fun loadAll() {
         val scriptHolders = gatherAvailableScriptFiles()
-        logger.infoRich("Found <yellow>${scriptHolders.size} <reset>script(s) to load.")
+        logger.infoRich("Compiling <yellow>${scriptHolders.size} <reset>script(s)...")
         // Compiling all available scripts in parallel.
         val compiledScripts = runBlocking {
             scriptHolders.map { holder -> async(Dispatchers.Default) {
@@ -79,6 +79,9 @@ internal class ScriptManager(val plugin: Kite) {
                     return@async null
                 }
             }}.awaitAll().filterNotNull()
+        }
+        logExecutor.submit {
+            logger.infoRich("Loading <yellow>${compiledScripts.size}<reset> out of <yellow>${scriptHolders.size}<reset> scripts...")
         }
         // Calling 'onLoad' for each compiled script and adding it to the list of loaded scripts.
         compiledScripts.forEach { script ->

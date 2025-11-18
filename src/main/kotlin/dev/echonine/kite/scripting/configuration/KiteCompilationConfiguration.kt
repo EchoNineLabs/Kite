@@ -16,6 +16,7 @@ import kotlin.script.experimental.api.acceptedLocations
 import kotlin.script.experimental.api.asSuccess
 import kotlin.script.experimental.api.baseClass
 import kotlin.script.experimental.api.collectedAnnotations
+import kotlin.script.experimental.api.compilerOptions
 import kotlin.script.experimental.api.defaultImports
 import kotlin.script.experimental.api.displayName
 import kotlin.script.experimental.api.hostConfiguration
@@ -59,6 +60,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
     jvm {
         updateClasspath(updatedClasspath)
         dependenciesFromClassContext(Kite::class, wholeClasspath = true)
+        compilerOptions("-jvm-target", "21", "-Xcontext-parameters")
     }
 
     providedProperties(

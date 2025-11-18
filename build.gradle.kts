@@ -32,7 +32,7 @@ dependencies {
     // https://github.com/Kotlin/kotlinx.coroutines
     addDualDependency("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     // https://github.com/PaperMC/Paper
-    api("io.papermc.paper:paper-api:1.21.6-R0.1-SNAPSHOT")
+    api("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
 }
 
 paper {
@@ -52,7 +52,7 @@ runPaper.folia.registerTask()
 tasks {
     // Shared configuration for runServer and runFolia tasks.
     withType(RunServer::class) {
-        minecraftVersion("1.21.8")
+        minecraftVersion("1.21.1")
         downloadPlugins {
             // Downloading ViaVersion and ViaBackwards for testing on lower (or higher) versions.
             modrinth("viaversion", "5.5.1")

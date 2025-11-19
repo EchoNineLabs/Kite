@@ -1,173 +1,199 @@
 package dev.echonine.kite.scripting
 
 import dev.echonine.kite.Kite
-import dev.echonine.kite.extensions.errorRich
-import dev.echonine.kite.extensions.infoRich
-import dev.echonine.kite.extensions.toRich
-import dev.echonine.kite.extensions.warnRich
-import dev.echonine.kite.extensions.withoutExtensions
+import dev.echonine.kite.util.extensions.errorRich
+import dev.echonine.kite.util.extensions.infoRich
+import dev.echonine.kite.util.extensions.nameWithoutExtensions
+import dev.echonine.kite.util.extensions.warnRich
+import dev.echonine.kite.scripting.configuration.KiteCompilationConfiguration
+import dev.echonine.kite.scripting.configuration.KiteEvaluationConfiguration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger
+import org.jetbrains.annotations.ApiStatus
+import org.jetbrains.annotations.ApiStatus.Internal
+import org.jetbrains.annotations.Unmodifiable
 import java.io.File
-import kotlin.script.experimental.api.*
+import java.util.concurrent.Executors
+import kotlin.coroutines.resume
+import kotlin.script.experimental.api.ResultWithDiagnostics
+import kotlin.script.experimental.api.ScriptDiagnostic.Severity
+import kotlin.script.experimental.api.displayName
+import kotlin.script.experimental.api.implicitReceivers
+import kotlin.script.experimental.api.providedProperties
+import kotlin.script.experimental.api.with
 import kotlin.script.experimental.host.toScriptSource
 import kotlin.script.experimental.jvm.baseClassLoader
 import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
 
-internal class ScriptManager {
-    val logger = ComponentLogger.logger("Kite-ScriptManager")
+internal class ScriptManager(val plugin: Kite) {
+
+    private val logger = ComponentLogger.logger("Kite")
+    private val scriptsFolder = File(plugin.dataFolder, "scripts")
     private val loadedScripts = mutableMapOf<String, ScriptContext>()
+    private val logExecutor = Executors.newSingleThreadExecutor()
 
-    fun loadAll() {
-        val scriptFiles = gatherAvailableScriptFiles()
-        logger.infoRich("<green>Found</green> <white>${scriptFiles.size}</white> <green>script(s) to load.</green>")
+    // Returns an unmodifiable view of all loaded scripts.
+    fun getLoadedScripts(): @Unmodifiable Map<String, ScriptContext> = loadedScripts.toMap()
 
-        val compiledScripts = runBlocking {
-            scriptFiles.map { file ->
-                async(Dispatchers.Default) {
-                    try {
-                        compileScriptAsync(file)
-                    } catch (e: Exception) {
-                        logger.errorRich("<red>Failed to compile script:</red> <white>${file.path}</white>")
-                        null
-                    }
-                }
-            }.awaitAll().filterNotNull()
-        }
+    // Returns true if specified script is loaded.
+    fun isScriptLoaded(name: String): Boolean = loadedScripts.containsKey(name)
 
-        compiledScripts.forEach { (scriptName, script) ->
-            loadedScripts[scriptName] = script
-            script.runOnLoad()
-            logger.infoRich("<green>Successfully loaded script:</green> <white>$scriptName</white>")
-        }
-
-        logger.infoRich("<green>Loaded ${loadedScripts.size}/${scriptFiles.size} scripts successfully.</green>")
+    // Collects all available script files to a list and returns it.
+    fun gatherAvailableScriptFiles(): List<ScriptHolder> {
+        // Creating 'plugins/Kite/scripts/' directory in case it doesn't exist.
+        if (!scriptsFolder.exists())
+            scriptsFolder.mkdirs()
+        // Otherwise, iterating over all files inside scripts directory.
+        else if (scriptsFolder.isDirectory) {
+            return scriptsFolder.listFiles()
+                .mapNotNull { ScriptHolder.fromName(it.nameWithoutExtensions, scriptsFolder) }
+                .distinctBy { it.name }
+                .toList()
+            }
+        return emptyList()
     }
 
-    private suspend fun compileScriptAsync(file: File): Pair<String, ScriptContext>? = withContext(Dispatchers.IO) {
-        logger.infoRich("<green>Compiling script:</green> <white>${file.path}</white>")
-        val scriptName = file.name.withoutExtensions()
-
-        val scriptDefinition = KiteCompilationConfiguration.with {
-            displayName(scriptName)
+    // Compiles and loads all available scripts.
+    fun loadAll() {
+        val scriptHolders = gatherAvailableScriptFiles()
+        logger.infoRich("Compiling <yellow>${scriptHolders.size} <reset>script(s)...")
+        // Compiling all available scripts in parallel.
+        val compiledScripts = runBlocking {
+            scriptHolders.map { holder -> async(Dispatchers.Default) {
+                try {
+                    compileScriptAsync(holder)
+                } catch (e: Throwable) {
+                    // Logging error(s) to the console and returning null.
+                    logger.errorRich("Script <yellow>${holder.name} <red>reported errors during compilation.")
+                    logger.errorRich("  (1) ${e.javaClass.name}: ${e.message}")
+                    if (e.cause != null)
+                        logger.errorRich("  (2) ${e.cause!!.javaClass.name}: ${e.cause!!.message}")
+                    return@async null
+                }
+            }}.awaitAll().filterNotNull()
         }
-
-        val script = ScriptContext(scriptName)
-        val evalEnv = KiteEvaluationConfiguration.with {
-            jvm {
-                baseClassLoader(Kite.instance?.javaClass?.classLoader ?: ClassLoader.getSystemClassLoader())
+        logExecutor.submit {
+            logger.infoRich("Loading <yellow>${compiledScripts.size}<reset> out of <yellow>${scriptHolders.size}<reset> scripts...")
+        }
+        // Calling 'onLoad' for each compiled script and adding it to the list of loaded scripts.
+        compiledScripts.forEach { script ->
+            loadedScripts[script.name] = script
+            script.runOnLoad()
+            // Logging message(s) from a single-thread queue to keep correct order.
+            logExecutor.submit {
+                logger.infoRich("Script <yellow>${script.name} <reset>has been successfully loaded.")
             }
-            enableScriptsInstancesSharing()
+        }
+        // Logging message(s) from a single-thread queue to keep the correct order.
+        logExecutor.submit {
+            logger.infoRich("Successfully loaded <yellow>${loadedScripts.size} <reset>out of total <yellow>${scriptHolders.size}<reset> scripts.")
+        }
+    }
+
+    // Compiles specified script file and returns the result.
+    private suspend fun compileScriptAsync(holder: ScriptHolder): ScriptContext? = withContext(Dispatchers.IO) {
+        logger.infoRich("Compiling <yellow>${holder.name}<reset>...")
+        // Creating a new instance of ScriptContext. Name of the script either file name with no extensions or script's folder name.
+        val script = ScriptContext(holder.name, holder.entryPoint)
+        // Creating compilation and evaluation configurations from Kite templates.
+        val compilationConfiguration = KiteCompilationConfiguration.with {
+            displayName(script.name)
+        }
+        val evaluationConfiguration = KiteEvaluationConfiguration.with {
+            jvm {
+                baseClassLoader(Kite::class.java.classLoader)
+            }
             implicitReceivers(script)
             providedProperties(mapOf(
-                "plugin" to Kite.instance!!,
-                "server" to Kite.instance!!.server
+                "plugin" to plugin,
+                "server" to plugin.server
             ))
         }
-
-        val compiledScript = BasicJvmScriptingHost().eval(
-            file.toScriptSource(),
-            scriptDefinition,
-            evalEnv
-        )
-
-        compiledScript.reports.forEach {
-            when (it.severity) {
-                ScriptDiagnostic.Severity.INFO -> logger.infoRich("[${file.name}] ${it.location?.toRich()}: ${it.message}")
-                ScriptDiagnostic.Severity.WARNING -> logger.warnRich("[${file.name}] ${it.location?.toRich()}: ${it.message}")
-                ScriptDiagnostic.Severity.ERROR -> logger.errorRich("[${file.name}] ${it.location?.toRich()}: ${it.message}")
-                ScriptDiagnostic.Severity.FATAL -> logger.errorRich("[${file.name}] ${it.location?.toRich()}: ${it.message}")
-                else -> {}
-            }
-        }
-
-        logger.infoRich("<green>Finished compiling script:</green> <white>${file.path}</white>")
-
-        scriptName to script
-    }
-
-    fun load(file: File): Job {
-        return CoroutineScope(Dispatchers.Default).launch {
-            val result = try {
-                compileScriptAsync(file)
-            } catch (e: Exception) {
-                logger.errorRich("<red>Failed to compile script:</red> <white>${file.path}</white>")
-                logger.errorRich("<red>Error:</red> ${e.message}")
-                null
-            }
-
-            result?.let { (scriptName, script) ->
-                loadedScripts[scriptName] = script
-                script.runOnLoad()
-                logger.infoRich("<green>Successfully loaded script:</green> <white>${file.path}</white>")
-            }
-        }
-    }
-
-    fun load(name: String): Boolean {
-        val scriptFiles = gatherAvailableScriptFiles()
-        val scriptFile = scriptFiles.find { it.name.withoutExtensions() == name }
-        if (scriptFile != null) {
-            load(scriptFile)
-            return true
-        }
-        return false
-    }
-
-    fun unload(scriptName: String) {
-        val script = loadedScripts[scriptName]
-        if (script != null) {
-            unload(script)
-        } else {
-            logger.warnRich("<yellow>Attempted to unload script that is not loaded:</yellow> <white>$scriptName</white>")
-        }
-    }
-
-    fun unload(script: ScriptContext) {
-        logger.infoRich("<green>Unloading script:</green> <white>${script.name}</white>")
-        script.runOnUnload()
-        script.cleanup()
-        loadedScripts.remove(script.name)
-        logger.infoRich("<green>Successfully unloaded script:</green> <white>${script.name}</white>")
-    }
-
-    fun getLoadedScripts(): Map<String, ScriptContext> {
-        return loadedScripts.toMap()
-    }
-
-    fun gatherAvailableScriptFiles(): List<File> {
-        val scriptsFolder = Kite.instance?.dataFolder?.resolve("scripts")
-
-        // Gather all .kite.kts files in the scripts folder or subfolders with a main.kite.kts file
-        val scriptFiles = mutableListOf<File>()
-        if (scriptsFolder != null && scriptsFolder.exists() && scriptsFolder.isDirectory) {
-            scriptsFolder.walk().forEach { file ->
-                if (file.isFile && file.extension == "kts" && file.name.endsWith(".kite.kts")) {
-                    val scriptName = file.name.withoutExtensions()
-                    if (!loadedScripts.containsKey(scriptName)) {
-                        scriptFiles.add(file)
-                    }
-                } else if (file.isDirectory) {
-                    val mainScriptFile = File(file, "main.kite.kts")
-                    if (mainScriptFile.exists() && mainScriptFile.isFile) {
-                        val scriptName = mainScriptFile.name.withoutExtensions()
-                        if (!loadedScripts.containsKey(scriptName)) {
-                            scriptFiles.add(mainScriptFile)
-                        }
-                    }
+        // Compiling the script. Top-level declarations and method calls will be evaluated. onEnable is not called in this step.
+        val compiledScript = BasicJvmScriptingHost().eval(holder.entryPoint.toScriptSource(), compilationConfiguration, evaluationConfiguration)
+        // Logging diagnostics from a single-thread queue. Otherwise messages can be displayed in wrong order due to parallel compilation.
+        logExecutor.submit {
+            val errorCount = compiledScript.reports.count { it.severity == Severity.FATAL || it.severity == Severity.ERROR || it.severity == Severity.WARNING }
+            if (compiledScript is ResultWithDiagnostics.Failure)
+                logger.errorRich("Script <yellow>${holder.name}</yellow> reported <yellow>$errorCount</yellow> error(s) during compilation:")
+            compiledScript.reports.forEach {
+                val message = "<yellow>(${script.name}, ${it.sourcePath?.substringAfterLast("/")}, line ${it.location?.start?.line ?: "???"}, col ${it.location?.start?.col ?: "???"})</yellow> ${it.message}"
+                when (it.severity) {
+                    Severity.INFO -> logger.infoRich(message)
+                    Severity.WARNING -> logger.warnRich(message)
+                    Severity.ERROR,
+                    Severity.FATAL -> logger.errorRich(message)
+                    else -> {}
                 }
             }
-        } else {
-            scriptsFolder?.mkdirs()
         }
-        return scriptFiles
+        // Returning ScriptContext instance if compilation was successful, or null otherwise.
+        return@withContext if (compiledScript !is ResultWithDiagnostics.Failure) script else null
     }
+
+    // Compiles and loads specified script. Name must be either script's file name, or name of directory containing main.kite.kts file.
+    suspend fun load(name: String): Boolean {
+        // Finding script by the specified name. Returning false if not found.
+        val holder = ScriptHolder.fromName(name, scriptsFolder) ?: return false
+        // Returning false if already loaded.
+        if (loadedScripts.containsKey(holder.name))
+            return false
+        // Loading the script.
+        load(holder)
+        return true
+    }
+
+    // Compiles and loads specified script file.
+    private suspend fun load(holder: ScriptHolder): Boolean = suspendCancellableCoroutine { coroutine ->
+        CoroutineScope(Dispatchers.Default).launch {
+            try {
+                // Compiling and loading specified script.
+                compileScriptAsync(holder)?.let { script ->
+                    plugin.server.globalRegionScheduler.execute(plugin, {
+                        loadedScripts[script.name] = script
+                        script.runOnLoad()
+                        logger.infoRich("Script <yellow>${holder.name}<reset> has been successfully loaded.")
+                        // Resuming the coroutine.
+                        coroutine.resume(true)
+                    })
+                }
+            } catch (e: Exception) {
+                // Logging error(s) to the console and returning null.
+                logger.errorRich("Script <yellow>${holder.name} reported errors during compilation.")
+                logger.errorRich("  (1) ${e.javaClass.name}: ${e.message}")
+                if (e.cause != null)
+                    logger.errorRich("  (2) ${e.cause!!.javaClass.name}: ${e.cause!!.message}")
+                // Resuming the coroutine.
+                coroutine.resume(false)
+            }
+        }
+    }
+
+    // Unloads specified script by it's name. Returns false if script isn't loaded.
+    suspend fun unload(name: String): Boolean {
+        return loadedScripts[name]?.let {
+            return unload(it)
+        } ?: false
+    }
+
+    // Unloads specified script by it's context.
+    @Internal
+    private suspend fun unload(script: ScriptContext): Boolean = suspendCancellableCoroutine { coroutine ->
+        plugin.server.globalRegionScheduler.execute(plugin, {
+            script.runOnUnload()
+            script.cleanup()
+            loadedScripts.remove(script.name)
+            // Resuming the coroutine.
+            coroutine.resume(true)
+        })
+    }
+
 }

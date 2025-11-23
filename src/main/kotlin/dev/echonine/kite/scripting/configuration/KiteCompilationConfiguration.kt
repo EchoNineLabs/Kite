@@ -98,21 +98,13 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
             // Getting the cache directory from plugin's data folder or from configured / default path if running with no server.
             val cacheDirectory = File(Kite.instance?.dataFolder?.path ?: System.getProperty("user.dir", "."), "cache")
             // Creating directories in case they don't exist yet.
-            cacheDirectory.mkdirs()
-            if (cacheDirectory.isDirectory) {
-                // Purging old cache files except the most recent one for each script. Filtering .cache.jar files and grouping by the script name.
-                cacheDirectory.listFiles()?.filter { it.name.endsWith(".cache.jar") }?.groupBy { it.name.split(".").dropLast(2) }
-                    ?.forEach { (_, files) ->
-                        // Skipping scripts with no stale cache files.
-                        if (files.size <= 1)
-                            return@forEach
-                        // Removing all stale cache files.
-                        files.maxByOrNull { it.lastModified() }?.let { newestFile ->
-                            files.filter { it != newestFile }.forEach { it.delete() }
-                        }
-                }
+            if (cacheDirectory.isDirectory || cacheDirectory.mkdirs()) {
                 // Configuring compilation cache.
                 compilationCache(CompiledScriptJarsCache { script, compilationConfiguration ->
+                    // Purging old cache.
+                    cacheDirectory.listFiles()
+                        ?.filter { it.name.endsWith(".cache.jar") && it.name.split(".").first() == compilationConfiguration[displayName] }
+                        ?.forEach { it.delete() }
                     // Getting the MD5 checksum and including it in the file name.
                     // MD5 checksum acts as a file identifier here.
                     val hash = script.text.toByteArray().let {

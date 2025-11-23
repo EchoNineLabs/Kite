@@ -147,8 +147,7 @@ internal class ScriptManager(val plugin: Kite) {
         if (loadedScripts.containsKey(holder.name))
             return false
         // Loading the script.
-        load(holder)
-        return true
+        return load(holder)
     }
 
     // Compiles and loads specified script file.
@@ -164,7 +163,7 @@ internal class ScriptManager(val plugin: Kite) {
                         // Resuming the coroutine.
                         coroutine.resume(true)
                     })
-                }
+                } ?: coroutine.resume(false)
             } catch (e: Exception) {
                 // Logging error(s) to the console and returning null.
                 logger.errorRich("Script <yellow>${holder.name} reported errors during compilation.")

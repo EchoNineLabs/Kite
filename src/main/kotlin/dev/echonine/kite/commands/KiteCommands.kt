@@ -90,7 +90,7 @@ class KiteCommands(plugin: Kite) : Command("kite") {
         if (scriptManager.unload(scriptName))
             if (scriptManager.load(scriptName))
                 sender.sendRichMessage("<dark_gray>› <gray>Script <yellow>$scriptName<gray> has been successfully reloaded.")
-            else sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<re> could not be loaded. Check console for errors.")
+            else sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<reset> could not be reloaded. Check console for errors.")
         else sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> is not loaded.")
     }
 

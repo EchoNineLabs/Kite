@@ -21,19 +21,19 @@ private fun makeBukkitRunnable(task: (BukkitRunnable) -> Unit, isRepeating: Bool
 
         override fun cancel() {
             super.cancel()
-            // Always remove canceled tasks from tracking
+            // Always remove cancelled tasks from tracking
             context.bukkitTasks.remove(this.taskId)
         }
     }
 }
 
-/*
-* Same as {@link BukkitScheduler#runTaskLater(org.bukkit.plugin.Plugin, Runnable, long)} but uses Kite instance as plugin and more Kotlin-friendly.
-*
-* @param delayTicks The delay in ticks before executing the task.
-* @param task The task to run.
-*
-*/
+/**
+ * Same as [BukkitScheduler.runTaskLater] but uses Kite instance as plugin and is more Kotlin-friendly.
+ *
+ * @param delayTicks The delay in ticks before executing the task.
+ * @param task The task to run.
+ *
+ */
 context(context: ScriptContext)
 fun BukkitScheduler.runTask(delayTicks: Long = 0, task: (BukkitRunnable) -> Unit): BukkitTask {
     val runnableTask = makeBukkitRunnable(task, isRepeating = false)
@@ -42,9 +42,9 @@ fun BukkitScheduler.runTask(delayTicks: Long = 0, task: (BukkitRunnable) -> Unit
     }
 }
 
-/*
-* Same as {@link BukkitScheduler#runTaskLaterAsynchronously(org.bukkit.plugin.Plugin, Runnable, long)} but uses Kite instance as plugin and more Kotlin-friendly.
-*/
+/**
+ * Same as [BukkitScheduler.runTaskLaterAsynchronously] but uses Kite instance as plugin and is more Kotlin-friendly.
+ */
 context(context: ScriptContext)
 fun BukkitScheduler.runTaskAsync(delayTicks: Long = 0, task: (BukkitRunnable) -> Unit): BukkitTask {
     val runnableTask = makeBukkitRunnable(task, isRepeating = false)
@@ -53,9 +53,9 @@ fun BukkitScheduler.runTaskAsync(delayTicks: Long = 0, task: (BukkitRunnable) ->
     }
 }
 
-/*
-* Same as {@link BukkitScheduler#runTaskTimer(org.bukkit.plugin.Plugin, Runnable, long, long)} but uses Kite instance as plugin and more Kotlin-friendly.
-*/
+/**
+ * Same as [BukkitScheduler.runTaskTimer] but uses Kite instance as plugin and is more Kotlin-friendly.
+ */
 context(context: ScriptContext)
 fun BukkitScheduler.runTaskTimer(
     periodTicks: Long,
@@ -68,9 +68,9 @@ fun BukkitScheduler.runTaskTimer(
     }
 }
 
-/*
-* Same as {@link BukkitScheduler#runTaskTimerAsynchronously(org.bukkit.plugin.Plugin, Runnable, long, long)} but uses Kite instance as plugin and more Kotlin-friendly.
-*/
+/**
+ * Same as [BukkitScheduler.runTaskTimerAsynchronously] but uses Kite instance as plugin and is more Kotlin-friendly.
+ */
 context(context: ScriptContext)
 fun BukkitScheduler.runTaskTimerAsync(
     periodTicks: Long,

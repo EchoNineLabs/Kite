@@ -8,6 +8,7 @@ import org.bukkit.event.EventPriority
 import org.bukkit.event.HandlerList
 import org.bukkit.event.Listener
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 
 
 class ScriptContext(
@@ -20,8 +21,12 @@ class ScriptContext(
     private val onUnloadCBs = mutableListOf<() -> Unit>()
     private val commands = mutableListOf<KiteScriptCommand>()
     val eventListeners = mutableListOf<Listener>()
-    val bukkitTasks = mutableListOf<Int>()
-    val foliaTasks = mutableListOf<ScheduledTask>()
+
+    // Because BukkitTask#cancel() method (which essentially removes task from this list) can be called from different threads, this should be a concurrent set.
+    val bukkitTasks = ConcurrentHashMap.newKeySet<Int>()
+
+    // Because ScheduledTask#cancel() method (which essentially removes task from this list) can be called from different threads, this should be a concurrent set.
+    val foliaTasks = ConcurrentHashMap.newKeySet<ScheduledTask>()
 
     fun onLoad(cb: () -> Unit) {
         onLoadCBs.add(cb)

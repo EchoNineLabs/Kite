@@ -302,6 +302,7 @@ val PAPER_IMPORTS = listOf(
 )
 
 val ADVENTURE_IMPORTS = listOf(
+    // adventure-api
     "net.kyori.adventure.*",
     "net.kyori.adventure.audience.*",
     "net.kyori.adventure.bossbar.*",
@@ -326,7 +327,10 @@ val ADVENTURE_IMPORTS = listOf(
     "net.kyori.adventure.text.serializer.*",
     "net.kyori.adventure.title.*",
     "net.kyori.adventure.translation.*",
-    "net.kyori.adventure.util.*"
+    "net.kyori.adventure.util.*",
+    // adventure-key
+    "net.kyori.adventure.key.*"
+
 )
 
 val MINIMESSAGE_IMPORTS = listOf(

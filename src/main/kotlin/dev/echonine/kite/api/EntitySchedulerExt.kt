@@ -12,10 +12,10 @@ import io.papermc.paper.threadedregions.scheduler.ScheduledTask
  * @return The [ScheduledTask] that represents the scheduled task.
  */
 context(context: ScriptContext)
-fun EntityScheduler.runNow(task: (KiteScheduledTask) -> Unit, retired: () -> Unit = {}): KiteScheduledTask? {
+fun EntityScheduler.run(task: (KiteScheduledTask) -> Unit, retired: () -> Unit = {}): KiteScheduledTask? {
     lateinit var kiteTask: KiteScheduledTask
     // Wrapping ScheduledTask as KiteScheduledTask in order to expose the overridden cancel() method.
-    // While this technically does not make any effect on 'runNow' - we should still use the wrapper for consistency with other extensions.
+    // While this technically does not make any effect on 'run' - we should still use the wrapper for consistency with other extensions.
     kiteTask = KiteScheduledTask(context, this.run(Kite.instance!!, { task(kiteTask) }, retired) ?: return null)
     // Run now tasks are not tracked in ScriptContext as they execute immediately.
     return kiteTask

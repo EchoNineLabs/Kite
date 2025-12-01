@@ -107,11 +107,26 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                         ?.forEach { it.delete() }
                     // Getting the MD5 checksum and including it in the file name.
                     // MD5 checksum acts as a file identifier here.
-                    val hash = script.text.toByteArray().let {
+                    val mainScriptHash = script.text.toByteArray().let {
                         val md = MessageDigest.getInstance("MD5")
                         md.update(it)
                         md.digest().joinToString("") { byte -> "%02x".format(byte) }
                     }
+                    // Also hash the imported scripts
+                    val importsHash = (compilationConfiguration[importScripts]
+                        ?: emptyList<FileScriptSource>()).joinToString("") { importedScript ->
+                        importedScript.text.toByteArray().let {
+                            val md = MessageDigest.getInstance("MD5")
+                            md.update(it)
+                            md.digest().joinToString("") { byte -> "%02x".format(byte) }
+                        }
+                    }
+
+                    // Creating the final hash by combining main script hash and imports hash
+                    val hash = MessageDigest.getInstance("MD5").apply {
+                        update(mainScriptHash.toByteArray())
+                        update(importsHash.toByteArray())
+                    }.digest().joinToString("") { byte -> "%02x".format(byte) }
                     return@CompiledScriptJarsCache File(cacheDirectory, "${compilationConfiguration[displayName]}.${hash}.cache.jar")
                 })
             }

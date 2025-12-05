@@ -1,4 +1,8 @@
 # Kite Plugin
+<a href=https://modrinth.com/plugin/kite><img alt="modrinth" height="54" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/modrinth_vector.svg"></a>
+<a href=https://hangar.papermc.io/echonine/kite><img alt="hangar" height="54" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/hangar_vector.svg"></a>
+<a href=https://discord.gg/xYcjBKqkDz><img alt="discord-plural" height="54" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/social/discord-plural_vector.svg"></a>
+
 **Kite** is plugin that provides a Kotlin scripting runtime for Paper-based Minecraft servers. It is designed for small and simple tasks and serves as a much more powerful alternative to Skript and other scripting plugins.
 
 ## Features

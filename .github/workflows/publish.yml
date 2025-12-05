@@ -30,20 +30,29 @@ jobs:
           echo "Looking for previous publish workflow runs..."
           LAST_RUN=""
           
-          # Check if we can find previous workflow runs
-          if gh run list --workflow=publish.yml --status=completed --limit=1 --json headSha --jq '.[0].headSha' 2>/dev/null | grep -q '^[a-f0-9]\{40\}$'; then
-            LAST_RUN=$(gh run list --workflow=publish.yml --status=completed --limit=1 --json headSha --jq -r '.[0].headSha')
-            echo "Found previous run at commit: $LAST_RUN"
+          # Get the last successful workflow run
+          echo "Looking for previous successful publish runs..."
+          
+          echo "Running: gh run list --workflow=publish.yml --status=success --limit=1 --json headSha"
+          RUNS_OUTPUT=$(gh run list --workflow=publish.yml --status=success --limit=1 --json headSha)
+          echo "Raw output: $RUNS_OUTPUT"
+          
+          if echo "$RUNS_OUTPUT" | jq -e '.[0].headSha' >/dev/null 2>&1; then
+            LAST_RUN=$(echo "$RUNS_OUTPUT" | jq -r '.[0].headSha')
+            echo "Found previous successful publish at commit: $LAST_RUN"
           else
-            echo "No previous workflow runs found"
+            echo "No previous successful publish runs found"
+            echo "Debugging: trying to parse with jq..."
+            echo "$RUNS_OUTPUT" | jq '.'
           fi
           
           # Generate changelog based on what we found
           if [ -z "$LAST_RUN" ] || ! git rev-parse --verify "$LAST_RUN" >/dev/null 2>&1; then
-            echo "Generating changelog from last 10 commits"
-            CHANGELOG=$(git log --oneline -10 --pretty=format:"- %s (%h)" 2>/dev/null || echo "- Unable to generate changelog")
+            echo "First publish - generating changelog from recent meaningful commits"
+            # For first run, only include commits from the last few days or major changes
+            CHANGELOG=$(git log --oneline --since="7 days ago" --pretty=format:"- %s (%h)" 2>/dev/null || git log --oneline -5 --pretty=format:"- %s (%h)" 2>/dev/null || echo "- Initial release")
           else
-            echo "Generating changelog since last publish at $LAST_RUN"
+            echo "Generating changelog since last publish at $LAST_RUN (excluding that commit)"
             CHANGELOG=$(git log --oneline "$LAST_RUN"..HEAD --pretty=format:"- %s (%h)" 2>/dev/null || echo "- No new commits since last publish")
           fi
           

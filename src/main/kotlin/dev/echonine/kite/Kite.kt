@@ -8,6 +8,7 @@ import org.bukkit.plugin.java.JavaPlugin
 class Kite : JavaPlugin() {
 
     internal lateinit var scriptManager: ScriptManager
+    internal lateinit var metrics: Metrics
 
     companion object {
         var instance: Kite? = null
@@ -21,6 +22,13 @@ class Kite : JavaPlugin() {
         this.scriptManager.loadAll()
         // Registering command(s).
         this.server.commandMap.register("kite", KiteCommands(this))
+        // Connecting to bStats.
+        this.metrics = Metrics(this, 27748)
+    }
+
+    override fun onDisable() {
+        // Disconnecting from bStats.
+        metrics.shutdown()
     }
 
 }

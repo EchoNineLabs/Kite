@@ -1,0 +1,80 @@
+name: Publish Plugin
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0  # Fetch full history for changelog generation
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Java 21
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          # Try to get the hash of the last successful publish workflow run
+          echo "Looking for previous publish workflow runs..."
+          LAST_RUN=""
+          
+          # Check if we can find previous workflow runs
+          if gh run list --workflow=publish.yml --status=completed --limit=1 --json headSha --jq '.[0].headSha' 2>/dev/null | grep -q '^[a-f0-9]\{40\}$'; then
+            LAST_RUN=$(gh run list --workflow=publish.yml --status=completed --limit=1 --json headSha --jq -r '.[0].headSha')
+            echo "Found previous run at commit: $LAST_RUN"
+          else
+            echo "No previous workflow runs found"
+          fi
+          
+          # Generate changelog based on what we found
+          if [ -z "$LAST_RUN" ] || ! git rev-parse --verify "$LAST_RUN" >/dev/null 2>&1; then
+            echo "Generating changelog from last 10 commits"
+            CHANGELOG=$(git log --oneline -10 --pretty=format:"- %s (%h)" 2>/dev/null || echo "- Unable to generate changelog")
+          else
+            echo "Generating changelog since last publish at $LAST_RUN"
+            CHANGELOG=$(git log --oneline "$LAST_RUN"..HEAD --pretty=format:"- %s (%h)" 2>/dev/null || echo "- No new commits since last publish")
+          fi
+          
+          # Fallback if changelog is empty
+          if [ -z "$CHANGELOG" ] || [ "$CHANGELOG" = "" ]; then
+            CHANGELOG="- No changes detected"
+          fi
+          
+          echo "Generated changelog:"
+          echo "$CHANGELOG"
+          
+          # Set the changelog as an environment variable
+          {
+            echo "CHANGELOG<<EOF"
+            echo "$CHANGELOG"
+            echo "EOF"
+          } >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+      
+      - name: Publish to Modrinth
+        run: ./gradlew modrinth
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          CHANGELOG: ${{ env.CHANGELOG }}
+      
+      - name: Publish to Hangar
+        run: ./gradlew publishAllPublicationsToHangar
+        env:
+          HANGAR_TOKEN: ${{ secrets.HANGAR_TOKEN }}
+          CHANGELOG: ${{ env.CHANGELOG }}

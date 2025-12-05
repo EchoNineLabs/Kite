@@ -2,17 +2,19 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import xyz.jpenilla.runtask.task.AbstractRun
 import xyz.jpenilla.runpaper.task.RunServer
+import io.papermc.hangarpublishplugin.model.Platforms
 
 plugins {
     kotlin("jvm") version "2.2.21"
     id("maven-publish")
     id("xyz.jpenilla.run-paper") version "3.0.2"
     id("de.eldoria.plugin-yml.paper") version "0.8.0"
+    id("com.modrinth.minotaur") version "2.8.10"
+    id("io.papermc.hangar-publish-plugin") version "0.1.3"
 }
 
 private val VERSION = "1.0.0"
 private val RUN_NUMBER = System.getenv("GITHUB_RUN_NUMBER") ?: "DEV"
-
 group = "dev.echonine.kite"
 version = "$VERSION+$RUN_NUMBER"
 
@@ -78,6 +80,11 @@ tasks {
             freeCompilerArgs = listOf("-Xcontext-parameters")
         }
     }
+
+}
+
+tasks.modrinth {
+    dependsOn(tasks.modrinthSyncBody)
 }
 
 publishing.publications {
@@ -101,4 +108,34 @@ tasks.register("getTag", {
 fun addDualDependency(dependencyNotation: String) {
     dependencies.add("paperLibrary", dependencyNotation)
     dependencies.add("api", dependencyNotation)
+}
+
+modrinth {
+    token.set(System.getenv("MODRINTH_TOKEN"))
+    projectId.set("kite")
+    versionNumber.set(version.toString())
+    versionType.set("beta")
+    uploadFile.set(tasks.jar.get())
+    gameVersions.addAll("1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.10")
+    loaders.addAll("paper", "purpur", "folia")
+    changelog.set(System.getenv("CHANGELOG"))
+    syncBodyFrom = rootProject.file("README.md").readText()
+}
+
+hangarPublish {
+    publications.register("plugin") {
+        version.set(project.version as String)
+        id.set("Kite")
+        channel.set("Beta")
+        changelog.set(System.getenv("CHANGELOG"))
+
+        apiKey.set(System.getenv("HANGAR_TOKEN"))
+
+        platforms {
+            register(Platforms.PAPER) {
+                jar.set(tasks.jar.flatMap { it.archiveFile })
+                platformVersions.set(listOf("1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.10"))
+            }
+        }
+    }
 }

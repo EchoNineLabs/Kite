@@ -25,26 +25,31 @@ class KiteCommands(plugin: Kite) : Command("kite") {
                     loadScript(sender, args[1])
                 else sender.sendRichMessage("<dark_gray>› <gray>Syntax: <#C06CEF>/kite load <#EED4FC><script_name>")
             }
+
             "unload" -> {
                 if (args.size >= 2)
                     unloadScript(sender, args[1])
                 else sender.sendRichMessage("<dark_gray>› <gray>Syntax: <#C06CEF>/kite unload <#EED4FC><script_name>")
             }
+
             "reload" -> {
                 if (args.size >= 2)
                     reloadScript(sender, args[1])
                 else sender.sendRichMessage("<dark_gray>› <gray>Syntax: <#C06CEF>/kite reload <#EED4FC><script_name>")
             }
+
+            "reloadall" -> reloadAllScripts(sender)
             "help" -> {
                 sender.sendRichMessage(
                     """
                         <gray><st>${" ".repeat(29)}</st>  <#C06CEF>Commands</#C06CEF>  <st>${" ".repeat(29)}</st>
-                        
+
                         <dark_gray>›  <#C06CEF>/kite list <gray>– <white>Shows list of all available scripts.
                         <dark_gray>›  <#C06CEF>/kite load <#EED4FC><script_name> <gray>– <white>Loads a script by name.
                         <dark_gray>›  <#C06CEF>/kite unload <#EED4FC><script_name> <gray>– <white>Unloads a loaded script.
                         <dark_gray>›  <#C06CEF>/kite reload <#EED4FC><script_name> <gray>– <white>Reloads a script.
-                        
+                        <dark_gray>›  <#C06CEF>/kite reloadall <gray>– <white>Reloads all loaded scripts.
+
                         <gray><st>${" ".repeat(74)}</st>
                     """.trimIndent()
                 )
@@ -54,7 +59,8 @@ class KiteCommands(plugin: Kite) : Command("kite") {
     }
 
     private fun listScripts(sender: CommandSender) {
-        val scripts = (scriptManager.gatherAvailableScriptFiles().map { it.name } + scriptManager.getLoadedScripts().keys).distinctBy { it }
+        val scripts = (scriptManager.gatherAvailableScriptFiles()
+            .map { it.name } + scriptManager.getLoadedScripts().keys).distinctBy { it }
         if (scripts.isEmpty()) {
             sender.sendRichMessage("<dark_gray>› <red>No scripts were found.")
             return
@@ -94,15 +100,46 @@ class KiteCommands(plugin: Kite) : Command("kite") {
         else sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> is not loaded.")
     }
 
+    private fun reloadAllScripts(sender: CommandSender) = CoroutineScope(Dispatchers.Default).launch {
+        val loadedScripts = scriptManager.getLoadedScripts().keys.toList()
+        if (loadedScripts.isEmpty()) {
+            sender.sendRichMessage("<dark_gray>› <red>No scripts are currently loaded.")
+            return@launch
+        }
+
+        sender.sendRichMessage("<dark_gray>› <gray>Reloading <yellow>${loadedScripts.size}<gray> script(s)...")
+        var successCount = 0
+        var failCount = 0
+
+        for (scriptName in loadedScripts) {
+            if (scriptManager.unload(scriptName)) {
+                if (scriptManager.load(scriptName)) {
+                    successCount++
+                } else {
+                    failCount++
+                }
+            } else {
+                failCount++
+            }
+        }
+
+        if (failCount == 0) {
+            sender.sendRichMessage("<dark_gray>› <gray>Successfully reloaded <green>$successCount<gray> script(s).")
+        } else {
+            sender.sendRichMessage("<dark_gray>› <gray>Reloaded <green>$successCount<gray> script(s), <red>$failCount<gray> failed. Check console for errors.")
+        }
+    }
+
     override fun tabComplete(sender: CommandSender, alias: String, args: Array<String>): List<String> {
         if (args.size == 1)
-            return listOf("list", "load", "unload", "reload").filter { it.startsWith(args[0], true) }
+            return listOf("list", "load", "unload", "reload", "reloadall").filter { it.startsWith(args[0], true) }
         else if (args.size == 2)
             return when (args[0]) {
                 // Returning list of all loaded scripts.
                 "unload", "reload" -> scriptManager.getLoadedScripts().keys.filter { it.startsWith(args[1], true) }
                 // Returning list of all not loaded scripts.
-                "load" -> scriptManager.gatherAvailableScriptFiles().map { it.name }.filter { it !in scriptManager.getLoadedScripts().keys && it.startsWith(args[1], true) }
+                "load" -> scriptManager.gatherAvailableScriptFiles().map { it.name }
+                    .filter { it !in scriptManager.getLoadedScripts().keys && it.startsWith(args[1], true) }
                 // No completions available for this input - returning an empty list.
                 else -> emptyList()
             }

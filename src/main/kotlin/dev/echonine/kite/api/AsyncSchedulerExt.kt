@@ -13,11 +13,10 @@ import java.util.concurrent.TimeUnit
  * @return The [ScheduledTask] that represents the scheduled task.
  */
 context(context: ScriptContext)
-fun AsyncScheduler.runNow(task: (KiteScheduledTask) -> Unit): ScheduledTask {
-    lateinit var kiteTask: KiteScheduledTask
+fun AsyncScheduler.runNow(task: () -> Unit): ScheduledTask {
     // Wrapping ScheduledTask as KiteScheduledTask in order to expose the overridden cancel() method.
     // While this technically does not make any effect on 'runNow' - we should still use the wrapper for consistency with other extensions.
-    kiteTask = KiteScheduledTask(context, this.runNow(Kite.instance!!, { task(kiteTask) }))
+    val kiteTask = KiteScheduledTask(context, this.runNow(Kite.instance!!) { task() })
     // Run now tasks are not tracked in ScriptContext as they execute immediately.
     return kiteTask
 }
@@ -38,16 +37,18 @@ fun AsyncScheduler.runDelayed(
 ): KiteScheduledTask {
     lateinit var kiteTask: KiteScheduledTask
     // Wrapping ScheduledTask as KiteScheduledTask in order to expose the overridden cancel() method.
-    kiteTask = KiteScheduledTask(context, this.runDelayed(
-        Kite.instance!!,
-        {
-            task(kiteTask)
-            // Remove the task from the context's list after execution.
-            context.foliaTasks.remove(kiteTask)
-        },
-        delay,
-        unit
-    ))
+    kiteTask = KiteScheduledTask(
+        context, this.runDelayed(
+            Kite.instance!!,
+            {
+                task(kiteTask)
+                // Remove the task from the context's list after execution.
+                context.foliaTasks.remove(kiteTask)
+            },
+            delay,
+            unit
+        )
+    )
     context.foliaTasks.add(kiteTask)
     return kiteTask
 }
@@ -70,13 +71,15 @@ fun AsyncScheduler.runAtFixedRate(
 ): KiteScheduledTask {
     lateinit var kiteTask: KiteScheduledTask
     // Wrapping ScheduledTask as KiteScheduledTask in order to expose the overridden cancel() method.
-    kiteTask = KiteScheduledTask(context, this.runAtFixedRate(
-        Kite.instance!!,
-        { task(kiteTask) },
-        initialDelay,
-        period,
-        unit
-    ))
+    kiteTask = KiteScheduledTask(
+        context, this.runAtFixedRate(
+            Kite.instance!!,
+            { task(kiteTask) },
+            initialDelay,
+            period,
+            unit
+        )
+    )
     context.foliaTasks.add(kiteTask)
     return kiteTask
 }

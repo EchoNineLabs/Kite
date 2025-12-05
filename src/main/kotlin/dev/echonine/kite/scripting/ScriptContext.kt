@@ -3,6 +3,7 @@ package dev.echonine.kite.scripting
 import dev.echonine.kite.Kite
 import dev.echonine.kite.util.extensions.syncCommands
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask
+import net.kyori.adventure.text.logger.slf4j.ComponentLogger
 import org.bukkit.event.Event
 import org.bukkit.event.EventPriority
 import org.bukkit.event.HandlerList
@@ -21,6 +22,7 @@ class ScriptContext(
     private val onUnloadCBs = mutableListOf<() -> Unit>()
     private val commands = mutableListOf<KiteScriptCommand>()
     val eventListeners = mutableListOf<Listener>()
+    val logger = ComponentLogger.logger("Kite/$name")
 
     // Because BukkitTask#cancel() method (which essentially removes task from this list) can be called from different threads, this should be a concurrent set.
     val bukkitTasks = ConcurrentHashMap.newKeySet<Int>()

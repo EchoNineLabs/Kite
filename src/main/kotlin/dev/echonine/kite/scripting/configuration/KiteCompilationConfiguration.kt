@@ -2,44 +2,40 @@ package dev.echonine.kite.scripting.configuration
 
 import dev.echonine.kite.Kite
 import dev.echonine.kite.api.annotations.Import
+import dev.echonine.kite.scripting.configuration.compat.DynamicServerJarCompat
 import dev.echonine.kite.scripting.Script
 import dev.echonine.kite.scripting.ScriptContext
 import org.bukkit.Server
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
 import java.security.MessageDigest
-import kotlin.script.experimental.api.KotlinType
-import kotlin.script.experimental.api.ScriptAcceptedLocation
-import kotlin.script.experimental.api.ScriptCollectedData
-import kotlin.script.experimental.api.ScriptCompilationConfiguration
-import kotlin.script.experimental.api.acceptedLocations
-import kotlin.script.experimental.api.asSuccess
-import kotlin.script.experimental.api.baseClass
-import kotlin.script.experimental.api.collectedAnnotations
-import kotlin.script.experimental.api.compilerOptions
-import kotlin.script.experimental.api.defaultImports
-import kotlin.script.experimental.api.displayName
-import kotlin.script.experimental.api.hostConfiguration
-import kotlin.script.experimental.api.ide
-import kotlin.script.experimental.api.implicitReceivers
-import kotlin.script.experimental.api.importScripts
-import kotlin.script.experimental.api.providedProperties
-import kotlin.script.experimental.api.refineConfiguration
+import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.FileBasedScriptSource
 import kotlin.script.experimental.host.FileScriptSource
 import kotlin.script.experimental.host.ScriptingHostConfiguration
-import kotlin.script.experimental.jvm.compilationCache
-import kotlin.script.experimental.jvm.dependenciesFromClassContext
-import kotlin.script.experimental.jvm.jvm
-import kotlin.script.experimental.jvm.updateClasspath
+import kotlin.script.experimental.jvm.*
 import kotlin.script.experimental.jvm.util.classpathFromClassloader
 import kotlin.script.experimental.jvmhost.CompiledScriptJarsCache
 
-// Resolves all plugins' classpaths in order to make compiler recognize APIs of external plugins.
 val updatedClasspath by lazy {
+    val classpath = mutableListOf<File>()
+
+    // Resolves all plugins' classpaths in order to make compiler recognize APIs of external plugins.
     Kite.instance?.server?.pluginManager?.plugins?.flatMap {
         classpathFromClassloader(it.javaClass.classLoader) ?: emptyList()
-    } ?: emptyList()
+    }?.let { pluginClasspath ->
+        classpath.addAll(pluginClasspath)
+    }
+
+    // Check if dynamic server JAR compatibility mode is enabled
+    if (DynamicServerJarCompat.isEnabled()) {
+        // Find the Paper API JAR using enhanced discovery for dynamic server architectures
+        DynamicServerJarCompat.findServerJar()?.let { paperApiJar ->
+            classpath.add(paperApiJar)
+        }
+    }
+
+    classpath.distinct()
 }
 
 @Suppress("JavaIoSerializableObjectMustHaveReadResolve")
@@ -60,6 +56,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
 
     jvm {
         updateClasspath(updatedClasspath)
+        dependenciesFromClassloader(wholeClasspath = true, unpackJarCollections = true)
         dependenciesFromClassContext(Kite::class, wholeClasspath = true)
         compilerOptions("-jvm-target", "21", "-Xcontext-parameters")
     }
@@ -103,7 +100,10 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 compilationCache(CompiledScriptJarsCache { script, compilationConfiguration ->
                     // Purging old cache.
                     cacheDirectory.listFiles()
-                        ?.filter { it.name.endsWith(".cache.jar") && it.name.split(".").first() == compilationConfiguration[displayName] }
+                        ?.filter {
+                            it.name.endsWith(".cache.jar") && it.name.split(".")
+                                .first() == compilationConfiguration[displayName]
+                        }
                         ?.forEach { it.delete() }
                     // Getting the MD5 checksum and including it in the file name.
                     // MD5 checksum acts as a file identifier here.
@@ -127,7 +127,10 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                         update(mainScriptHash.toByteArray())
                         update(importsHash.toByteArray())
                     }.digest().joinToString("") { byte -> "%02x".format(byte) }
-                    return@CompiledScriptJarsCache File(cacheDirectory, "${compilationConfiguration[displayName]}.${hash}.cache.jar")
+                    return@CompiledScriptJarsCache File(
+                        cacheDirectory,
+                        "${compilationConfiguration[displayName]}.${hash}.cache.jar"
+                    )
                 })
             }
         }

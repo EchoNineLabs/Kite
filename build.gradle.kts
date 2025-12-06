@@ -116,7 +116,7 @@ modrinth {
     versionNumber.set(version.toString())
     versionType.set("beta")
     uploadFile.set(tasks.jar.get())
-    gameVersions.addAll("1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.10")
+    gameVersions.addAll("1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10")
     loaders.addAll("paper", "purpur", "folia")
     changelog.set(System.getenv("CHANGELOG"))
     syncBodyFrom = rootProject.file("README.md").readText()

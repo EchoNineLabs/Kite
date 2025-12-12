@@ -49,10 +49,18 @@ internal class ScriptManager(val plugin: Kite) {
     // Collects all available script files to a list and returns it.
     fun gatherAvailableScriptFiles(): List<ScriptHolder> {
         // Creating 'plugins/Kite/scripts/' directory in case it doesn't exist.
-        if (!scriptsFolder.exists())
+        if (!scriptsFolder.exists()) {
             scriptsFolder.mkdirs()
-        // Otherwise, iterating over all files inside scripts directory.
-        else if (scriptsFolder.isDirectory) {
+            // Copy the default, example script to the scripts folder to help users get started.
+            val exampleScript = this.javaClass.getResourceAsStream("example.kite.kts")
+            if (exampleScript != null) {
+                File(scriptsFolder, "example.kite.kts").outputStream().use { output ->
+                    exampleScript.copyTo(output)
+                }
+            }
+        }
+        // Iterating over all files inside scripts directory.
+        if (scriptsFolder.isDirectory) {
             return scriptsFolder.listFiles()
                 .mapNotNull { ScriptHolder.fromName(it.nameWithoutExtensions, scriptsFolder) }
                 .distinctBy { it.name }

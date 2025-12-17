@@ -145,7 +145,7 @@ publishing {
         create<MavenPublication>("api") {
             groupId = "dev.echonine.kite"
             artifactId = "kite"
-            version = project.version as String
+            version = (project.version as String).split("+")[0] // Use only the version part before '+' for publishing.
 
             from(components["java"])
 

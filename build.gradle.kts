@@ -139,3 +139,34 @@ hangarPublish {
         }
     }
 }
+
+publishing {
+    publications {
+        create<MavenPublication>("api") {
+            groupId = "dev.echonine.kite"
+            artifactId = "kite"
+            version = project.version as String
+
+            from(components["java"])
+
+            versionMapping {
+                usage("java-api") { fromResolutionOf("runtimeClasspath") }
+                usage("java-runtime") { fromResolutionResult() }
+            }
+
+            repositories {
+                maven {
+                    name = "CodebergPackages"
+                    url = uri("https://codeberg.org/api/packages/EchoNine/maven")
+                    credentials(HttpHeaderCredentials::class.java) {
+                        name = "Authorization"
+                        value = "token ${System.getenv("CODEBERG_TOKEN")}"
+                    }
+                    authentication {
+                        val header by registering(HttpHeaderAuthentication::class)
+                    }
+                }
+            }
+        }
+    }
+}

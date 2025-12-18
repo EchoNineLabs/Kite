@@ -57,9 +57,9 @@ tasks {
         minecraftVersion("1.21.1")
         downloadPlugins {
             // Downloading ViaVersion and ViaBackwards for testing on lower (or higher) versions.
-            modrinth("viaversion", "5.5.1")
-            modrinth("viabackwards", "5.5.1")
-            // Downloading MiniPlaceholders 3.1.0. ID must be used because same version number is used for multiple platforms.
+            modrinth("viaversion", "5.6.0")
+            modrinth("viabackwards", "5.6.0")
+            // Downloading MiniPlaceholders 3.1.0. ID must be used because the same version number is used for multiple platforms.
             modrinth("miniplaceholders", "4zOT6txC")
             // Downloading PlaceholderAPI with Folia support included starting from 2.11.7.
             modrinth("placeholderapi", "2.11.7")
@@ -93,15 +93,15 @@ publishing.publications {
     }
 }
 
-// Returns formatted release name.
-tasks.register("getRelease", {
+// Returns the formatted release name.
+tasks.register("getRelease") {
     print(VERSION)
-})
+}
 
-// Returns formatted tag name.
-tasks.register("getTag", {
+// Returns the formatted tag name.
+tasks.register("getTag") {
     print("${VERSION}+${RUN_NUMBER}")
-})
+}
 
 // Adds specified dependency to 'paperLibrary' and 'api' configurations.
 // This makes it easier for IDEA to resolve dependencies when working with .kite.kts scripts.

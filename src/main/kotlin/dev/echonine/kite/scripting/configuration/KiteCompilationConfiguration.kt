@@ -98,13 +98,6 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
             if (cacheDirectory.isDirectory || cacheDirectory.mkdirs()) {
                 // Configuring compilation cache.
                 compilationCache(CompiledScriptJarsCache { script, compilationConfiguration ->
-                    // Purging old cache.
-                    cacheDirectory.listFiles()
-                        ?.filter {
-                            it.name.endsWith(".cache.jar") && it.name.split(".")
-                                .first() == compilationConfiguration[displayName]
-                        }
-                        ?.forEach { it.delete() }
                     // Getting the MD5 checksum and including it in the file name.
                     // MD5 checksum acts as a file identifier here.
                     val mainScriptHash = script.text.toByteArray().let {
@@ -127,10 +120,19 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                         update(mainScriptHash.toByteArray())
                         update(importsHash.toByteArray())
                     }.digest().joinToString("") { byte -> "%02x".format(byte) }
-                    return@CompiledScriptJarsCache File(
-                        cacheDirectory,
-                        "${compilationConfiguration[displayName]}.${hash}.cache.jar"
-                    )
+                    
+                    val cacheFileName = "${compilationConfiguration[displayName]}.${hash}.cache.jar"
+                    
+                    // Purging old cache files with different hashes (not the current one).
+                    cacheDirectory.listFiles()
+                        ?.filter {
+                            it.name.endsWith(".cache.jar") && 
+                            it.name.split(".").first() == compilationConfiguration[displayName] &&
+                            it.name != cacheFileName
+                        }
+                        ?.forEach { it.delete() }
+                    
+                    return@CompiledScriptJarsCache File(cacheDirectory, cacheFileName)
                 })
             }
         }

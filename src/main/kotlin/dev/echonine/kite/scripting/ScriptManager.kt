@@ -67,7 +67,7 @@ internal class ScriptManager(val plugin: Kite) {
         logger.infoRich("Compiling <yellow>${scriptHolders.size} <reset>script(s)...")
         // Compiling all available scripts in parallel.
         val compiledScripts = runBlocking {
-            primeScriptingEngine()
+//            primeScriptingEngine()
             scriptHolders.map { holder -> async(Dispatchers.Default) {
                 try {
                     compileScriptAsync(holder)
@@ -99,28 +99,22 @@ internal class ScriptManager(val plugin: Kite) {
         }
     }
 
-    // Primes the scripting engine by compiling a simple hello world script.
-    private suspend fun primeScriptingEngine() = withContext(Dispatchers.IO) {
-        logger.infoRich("Priming scripting engine...")
-        val helloWorldScript = """
-            println("Hello, World!")
-        """.trimIndent()
-        val tempFile = File.createTempFile("kite-prime", ".kite.kts")
-        try {
-            tempFile.writeText(helloWorldScript)
-            val compilationConfiguration = KiteCompilationConfiguration.with {
-                displayName("primer")
-            }
-            val evaluationConfiguration = KiteEvaluationConfiguration.with {
-                jvm {
-                    baseClassLoader(Kite::class.java.classLoader)
-                }
-            }
-            BasicJvmScriptingHost().eval(tempFile.toScriptSource(), compilationConfiguration, evaluationConfiguration)
-        } finally {
-            tempFile.delete()
-        }
-    }
+    // // Primes the scripting engine by compiling a simple hello world script.
+    // private suspend fun primeScriptingEngine() = withContext(Dispatchers.IO) {
+    //     logger.infoRich("Priming scripting engine...")
+    //     val helloWorldScript = """
+    //         println("Hello, World!")
+    //     """.trimIndent()
+    //     val compilationConfiguration = KiteCompilationConfiguration.with {
+    //         displayName("primer")
+    //     }
+    //     val evaluationConfiguration = KiteEvaluationConfiguration.with {
+    //         jvm {
+    //             baseClassLoader(Kite::class.java.classLoader)
+    //         }
+    //     }
+    //     BasicJvmScriptingHost().eval(helloWorldScript.toScriptSource(), compilationConfiguration, evaluationConfiguration)
+    // }
 
 
 
@@ -132,13 +126,13 @@ internal class ScriptManager(val plugin: Kite) {
         val compilationConfiguration = KiteCompilationConfiguration.with {
             displayName(script.name)
         }
-        
+
         // Get cache file and record its last modified time before compilation
         val cacheDirectory = File(plugin.dataFolder, "cache")
         val cacheFile = cacheDirectory.listFiles()
             ?.firstOrNull { it.name.startsWith("${script.name}.") && it.name.endsWith(".cache.jar") }
         val cacheLastModified = cacheFile?.lastModified() ?: 0L
-        
+
         val evaluationConfiguration = KiteEvaluationConfiguration.with {
             jvm {
                 baseClassLoader(Kite::class.java.classLoader)
@@ -153,12 +147,12 @@ internal class ScriptManager(val plugin: Kite) {
         val startTime = System.currentTimeMillis()
         val compiledScript = BasicJvmScriptingHost().eval(holder.entryPoint.toScriptSource(), compilationConfiguration, evaluationConfiguration)
         val elapsedTime = System.currentTimeMillis() - startTime
-        
+
         // Check if cache was used or created
         val cacheFileAfter = cacheDirectory.listFiles()
             ?.firstOrNull { it.name.startsWith("${script.name}.") && it.name.endsWith(".cache.jar") }
         val wasCacheUsed = cacheFileAfter != null && cacheFileAfter.lastModified() == cacheLastModified
-        
+
         if (wasCacheUsed) {
             logger.infoRich("Loaded <yellow>${holder.name}<reset> from cache in <yellow>${elapsedTime}ms<reset>")
         } else {

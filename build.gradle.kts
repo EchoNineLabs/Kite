@@ -45,7 +45,7 @@ paper {
     hasOpenClassloader = true
     generateLibrariesJson = true
     description = "A lightweight Kotlin scripting plugin"
-    website = "https://docs.echonine.dev/kite/"
+    website = "https://echonine.dev/kite/"
     authors = listOf("Saturn745", "Grabsky")
 }
 

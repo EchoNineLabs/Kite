@@ -1,13 +1,19 @@
 package dev.echonine.kite.scripting.configuration
 
 import dev.echonine.kite.Kite
+import dev.echonine.kite.api.annotations.Dependency
 import dev.echonine.kite.api.annotations.Import
+import dev.echonine.kite.api.annotations.Relocation
+import dev.echonine.kite.api.annotations.Repository
 import dev.echonine.kite.scripting.configuration.compat.DynamicServerJarCompat
 import dev.echonine.kite.scripting.Script
 import dev.echonine.kite.scripting.ScriptContext
 import org.bukkit.Server
 import org.bukkit.plugin.java.JavaPlugin
+import revxrsal.zapper.DependencyManager
+import revxrsal.zapper.classloader.URLClassLoaderWrapper
 import java.io.File
+import java.net.URLClassLoader
 import java.security.MessageDigest
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.FileBasedScriptSource
@@ -20,7 +26,7 @@ import kotlin.script.experimental.jvmhost.CompiledScriptJarsCache
 val updatedClasspath by lazy {
     val classpath = mutableListOf<File>()
 
-    // Resolves all plugins' classpaths in order to make compiler recognize APIs of external plugins.
+    // Resolves all plugins' classpaths to make the compiler recognize APIs of external plugins.
     Kite.instance?.server?.pluginManager?.plugins?.flatMap {
         classpathFromClassloader(it.javaClass.classLoader) ?: emptyList()
     }?.let { pluginClasspath ->
@@ -38,10 +44,18 @@ val updatedClasspath by lazy {
     classpath.distinct()
 }
 
+// Libraries directory is where @Dependency declarations are downloaded to.
+val libsDirectory by lazy {
+    File(Kite.instance?.dataFolder?.path ?: System.getProperty("user.dir", "."), "libs")
+}
+
+// Cache directory is where (script_name).(script_hash).cache.jar files are saved to.
+val cacheDirectory by lazy {
+    File(Kite.instance?.dataFolder?.path ?: System.getProperty("user.dir", "."), "cache")
+}
+
 @Suppress("JavaIoSerializableObjectMustHaveReadResolve")
 object KiteCompilationConfiguration : ScriptCompilationConfiguration({
-    // Adding annotations to default imports.
-    defaultImports(Import::class)
     // Adding Bukkit APIs and Kite to default imports.
     defaultImports.append(PAPER_IMPORTS)
     defaultImports.append(ADVENTURE_IMPORTS)
@@ -67,21 +81,51 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
     )
 
     refineConfiguration {
-        onAnnotations(Import::class, handler = { context ->
-            // Collecting all defined annotations. Returning if no annotations were specified.
-            val annotations = context.collectedData?.get(ScriptCollectedData.collectedAnnotations)?.takeIf {
-                it.isNotEmpty()
-            } ?: return@onAnnotations context.compilationConfiguration.asSuccess()
+        onAnnotations(Import::class, Dependency::class, Repository::class, Relocation::class, handler = { context ->
+            // Collecting all defined annotations.
+            val annotations = context.collectedData?.get(ScriptCollectedData.collectedAnnotations)
+                ?.map { it.annotation }?.takeIf { it.isNotEmpty() }
+                // Returning if no annotations were specified.
+                ?: return@onAnnotations context.compilationConfiguration.asSuccess()
             val scriptBaseDir = (context.script as? FileBasedScriptSource)?.file?.parentFile
-            val importedSources = annotations.flatMap {
-                (it.annotation as? Import)?.paths.orEmpty().map { path ->
-                    FileScriptSource(scriptBaseDir?.resolve(path) ?: File(path))
+            val importedSources: MutableList<FileScriptSource> = mutableListOf()
+            // We don't want to share the instance of DependencyManager between scripts / compiler runs as it can easily store up on stale repositories and/or dependencies.
+            val dependencyManager = DependencyManager(libsDirectory, URLClassLoaderWrapper.wrap(Kite::class.java.classLoader as URLClassLoader))
+            // List of dependencies; for later use when appending them to the compilation config.
+            val scriptDependencies: MutableList<String> = mutableListOf()
+            // Parsing script annotations.
+            annotations.forEach { annotation -> when (annotation) {
+                // Adding repositories declared via @Repository.
+                is Repository -> {
+                    dependencyManager.repository(revxrsal.zapper.repository.Repository.maven(annotation.repository))
                 }
-            }
+                // Adding dependencies declared via @Dependency.
+                is Dependency -> {
+                    dependencyManager.dependency(annotation.dependency)
+                    // Adding to the list of script dependencies for later use.
+                    scriptDependencies.add("${annotation.dependency.replaceFirst(":", ".").replaceFirst(":", "-")}.jar")
+                    // No easy way to figure out what has and what has been not been relocated, so we have to add both and then filter based on which file exists and which one doesn't.
+                    scriptDependencies.add("${annotation.dependency.replaceFirst(":", ".").replaceFirst(":", "-")}-relocated.jar")
+                }
+                // Configuring relocations specified via @Relocation.
+                is Relocation -> {
+                    dependencyManager.relocate(revxrsal.zapper.relocation.Relocation(annotation.pattern, annotation.newPattern))
+                }
+                // Collecting other .kite.kts files referenced via @Import.
+                is Import -> {
+                    annotation.paths.forEach { path ->
+                        importedSources += FileScriptSource(scriptBaseDir?.resolve(path) ?: File(path))
+                    }
+                }
+            }}
+
             return@onAnnotations ScriptCompilationConfiguration(context.compilationConfiguration) {
-                if (importedSources.isNotEmpty()) {
-                    importScripts.append(importedSources)
-                }
+                // Downloading declared libraries.
+                dependencyManager.load()
+                // Adding downloaded libraries as dependencies.
+                dependencies.append(JvmDependency(scriptDependencies.map { File(libsDirectory, it) }.filter { it.exists() }))
+                // Appending imported sources to the script.
+                importedSources.takeUnless { it.isEmpty() }?.let { importScripts.append(it) }
             }.asSuccess()
         })
     }
@@ -92,8 +136,6 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
 
     hostConfiguration(ScriptingHostConfiguration {
         jvm {
-            // Getting the cache directory from plugin's data folder or from configured / default path if running with no server.
-            val cacheDirectory = File(Kite.instance?.dataFolder?.path ?: System.getProperty("user.dir", "."), "cache")
             // Creating directories in case they don't exist yet.
             if (cacheDirectory.isDirectory || cacheDirectory.mkdirs()) {
                 // Configuring compilation cache.
@@ -115,7 +157,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                         }
                     }
 
-                    // Creating the final hash by combining main script hash and imports hash
+                    // Creating the final hash by combining the main script hash and imports hash
                     val hash = MessageDigest.getInstance("MD5").apply {
                         update(mainScriptHash.toByteArray())
                         update(importsHash.toByteArray())

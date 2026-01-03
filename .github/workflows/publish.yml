@@ -47,13 +47,51 @@ jobs:
           fi
           
           # Generate changelog based on what we found
+          generate_changelog() {
+            local range="$1"
+            git log $range --format="COMMIT_START%n%H%n%h%n%s%n%b%nCOMMIT_END" 2>/dev/null | \
+            awk -v repo="$GITHUB_REPOSITORY" '
+              BEGIN { in_commit=0; hash=""; shorthash=""; subject=""; body="" }
+              /^COMMIT_START$/ { in_commit=1; hash=""; shorthash=""; subject=""; body=""; line_count=0; next }
+              /^COMMIT_END$/ {
+                if (in_commit && subject != "") {
+                  printf "- %s ([%s](<https://github.com/%s/commit/%s>))\n", subject, shorthash, repo, hash
+                  if (body != "") printf "%s", body
+                }
+                in_commit=0
+                next
+              }
+              in_commit {
+                line_count++
+                if (line_count == 1) { hash = $0 }
+                else if (line_count == 2) { shorthash = $0 }
+                else if (line_count == 3) { subject = $0 }
+                else if ($0 != "") { body = body "  " $0 "\n" }
+              }
+            '
+          }
+
           if [ -z "$LAST_RUN" ] || ! git rev-parse --verify "$LAST_RUN" >/dev/null 2>&1; then
             echo "First publish - generating changelog from recent meaningful commits"
             # For first run, only include commits from the last few days or major changes
-            CHANGELOG=$(git log --oneline --since="7 days ago" --pretty=format:"- %s (%h)" 2>/dev/null || git log --oneline -5 --pretty=format:"- %s (%h)" 2>/dev/null || echo "- Initial release")
+            CHANGELOG=$(generate_changelog "--since='7 days ago'")
+
+            # Fallback if no commits in 7 days
+            if [ -z "$CHANGELOG" ] || [ "$CHANGELOG" = "" ]; then
+              CHANGELOG=$(generate_changelog "-5")
+            fi
+
+            # Final fallback
+            if [ -z "$CHANGELOG" ] || [ "$CHANGELOG" = "" ]; then
+              CHANGELOG="- Initial release"
+            fi
           else
             echo "Generating changelog since last publish at $LAST_RUN (excluding that commit)"
-            CHANGELOG=$(git log --oneline "$LAST_RUN"..HEAD --pretty=format:"- %s (%h)" 2>/dev/null || echo "- No new commits since last publish")
+            CHANGELOG=$(generate_changelog "$LAST_RUN..HEAD")
+
+            if [ -z "$CHANGELOG" ] || [ "$CHANGELOG" = "" ]; then
+              CHANGELOG="- No new commits since last publish"
+            fi
           fi
           
           # Fallback if changelog is empty
@@ -87,3 +125,45 @@ jobs:
         env:
           HANGAR_TOKEN: ${{ secrets.HANGAR_TOKEN }}
           CHANGELOG: ${{ env.CHANGELOG }}
+
+      - name: Send Discord Notification
+        run: |
+          echo "Fetching latest version info from Modrinth and Hangar..."
+
+          # Fetch latest Modrinth version
+          MODRINTH_DATA=$(curl -s "https://api.modrinth.com/v2/project/kite/version")
+          MODRINTH_VERSION_ID=$(echo "$MODRINTH_DATA" | jq -r '.[0].id')
+          MODRINTH_VERSION_NAME=$(echo "$MODRINTH_DATA" | jq -r '.[0].name')
+          MODRINTH_LINK="https://modrinth.com/plugin/kite/version/$MODRINTH_VERSION_ID"
+
+          # Fetch latest Hangar version
+          HANGAR_VERSION=$(curl -s "https://hangar.papermc.io/api/v1/projects/kite/latest?channel=beta")
+          HANGAR_VERSION_NAME=$(echo "$HANGAR_VERSION")
+          HANGAR_LINK="https://hangar.papermc.io/EchoNine/Kite/versions/$HANGAR_VERSION_NAME"
+
+          echo "Modrinth version: $MODRINTH_VERSION_NAME ($MODRINTH_VERSION_ID)"
+          echo "Hangar version: $HANGAR_VERSION_NAME"
+
+          # Format Discord message with proper JSON escaping
+          DISCORD_CONTENT="**New Kite Release: $MODRINTH_VERSION_NAME**
+
+          **Changelog:**
+          $CHANGELOG
+
+          **Download Links:**
+          • [Modrinth](<$MODRINTH_LINK>)
+          • [Hangar](<$HANGAR_LINK>)"
+
+          # Create JSON payload with jq to properly escape everything
+          PAYLOAD=$(jq -n \
+            --arg content "$DISCORD_CONTENT" \
+            '{content: $content}')
+
+          # Send to Discord webhook
+          curl -H "Content-Type: application/json" \
+            -d "$PAYLOAD" \
+            "$DISCORD_WEBHOOK_URL"
+
+          echo "Discord notification sent!"
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}

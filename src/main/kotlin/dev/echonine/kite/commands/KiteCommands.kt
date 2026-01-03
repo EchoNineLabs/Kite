@@ -75,29 +75,28 @@ class KiteCommands(plugin: Kite) : Command("kite") {
     }
 
     private fun loadScript(sender: CommandSender, scriptName: String) = CoroutineScope(Dispatchers.IO).launch {
-        // Sending error message if script is already loaded.
+        // Sending an error message if a script is already loaded.
         if (scriptManager.getLoadedScripts().containsKey(scriptName))
             sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> is already loaded.")
-        // Loading and sending message according to the result.
+        // Loading and sending a message according to the result.
         else if (scriptManager.load(scriptName))
             sender.sendRichMessage("<dark_gray>› <gray>Script <yellow>$scriptName<gray> has been successfully loaded.")
         else sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> could not be loaded. Check console for errors.")
     }
 
     private fun unloadScript(sender: CommandSender, scriptName: String) = CoroutineScope(Dispatchers.Default).launch {
-        // Unloading and sending message according to the result.
+        // Unloading and sending a message according to the result.
         if (scriptManager.unload(scriptName))
             sender.sendRichMessage("<dark_gray>› <gray>Script <yellow>$scriptName<gray> has been successfully unloaded.")
         else sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> is not loaded.")
     }
 
     private fun reloadScript(sender: CommandSender, scriptName: String) = CoroutineScope(Dispatchers.Default).launch {
-        // Reloading and sending message according to the result.
-        if (scriptManager.unload(scriptName))
-            if (scriptManager.load(scriptName))
-                sender.sendRichMessage("<dark_gray>› <gray>Script <yellow>$scriptName<gray> has been successfully reloaded.")
-            else sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> could not be reloaded. Check console for errors.")
-        else sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> is not loaded.")
+        // Reloading and sending a message according to the result.
+        scriptManager.unload(scriptName)
+        if (scriptManager.load(scriptName))
+            sender.sendRichMessage("<dark_gray>› <gray>Script <yellow>$scriptName<gray> has been successfully reloaded.")
+        else sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> could not be reloaded. Check console for errors.")
     }
 
     private fun reloadAllScripts(sender: CommandSender) = CoroutineScope(Dispatchers.Default).launch {
@@ -135,11 +134,13 @@ class KiteCommands(plugin: Kite) : Command("kite") {
             return listOf("list", "load", "unload", "reload", "reloadall").filter { it.startsWith(args[0], true) }
         else if (args.size == 2)
             return when (args[0]) {
-                // Returning list of all loaded scripts.
-                "unload", "reload" -> scriptManager.getLoadedScripts().keys.filter { it.startsWith(args[1], true) }
-                // Returning list of all not loaded scripts.
+                // Returning a list of all loaded scripts.
+                "unload" -> scriptManager.getLoadedScripts().keys.filter { it.startsWith(args[1], true) }
+                // Returning a list of all not loaded scripts.
                 "load" -> scriptManager.gatherAvailableScriptFiles().map { it.name }
                     .filter { it !in scriptManager.getLoadedScripts().keys && it.startsWith(args[1], true) }
+                // Returning a list of all scripts.
+                "reload" -> scriptManager.gatherAvailableScriptFiles().map { it.name }
                 // No completions available for this input - returning an empty list.
                 else -> emptyList()
             }

@@ -26,6 +26,8 @@ repositories {
 dependencies {
     // Kotlin Standard Library
     paperLibrary(kotlin("stdlib"))
+    // Zapper (Runtime Dependencies)
+    paperLibrary("io.github.revxrsal:zapper.api:1.0.3")
     // Kotlin Scripting Libraries
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm")
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm-host")

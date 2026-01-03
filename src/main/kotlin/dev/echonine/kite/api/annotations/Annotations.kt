@@ -15,3 +15,18 @@ annotation class Import(vararg val paths: String)
 @Repeatable
 @Retention(AnnotationRetention.SOURCE)
 annotation class CompilerOptions(vararg val options: String)
+
+@Target(AnnotationTarget.FILE)
+@Repeatable
+@Retention(AnnotationRetention.RUNTIME)
+annotation class Dependency(val dependency: String)
+
+@Target(AnnotationTarget.FILE)
+@Repeatable
+@Retention(AnnotationRetention.RUNTIME)
+annotation class Repository(val repository: String)
+
+@Target(AnnotationTarget.FILE)
+@Repeatable
+@Retention(AnnotationRetention.RUNTIME)
+annotation class Relocation(val pattern: String, val newPattern: String)

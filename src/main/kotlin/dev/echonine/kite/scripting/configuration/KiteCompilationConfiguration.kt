@@ -101,11 +101,17 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 }
                 // Adding dependencies declared via @Dependency.
                 is Dependency -> {
-                    dependencyManager.dependency(annotation.dependency)
-                    // Adding to the list of script dependencies for later use.
-                    scriptDependencies.add("${annotation.dependency.replaceFirst(":", ".").replaceFirst(":", "-")}.jar")
-                    // No easy way to figure out what has and what has been not been relocated, so we have to add both and then filter based on which file exists and which one doesn't.
-                    scriptDependencies.add("${annotation.dependency.replaceFirst(":", ".").replaceFirst(":", "-")}-relocated.jar")
+                    if (annotation.dependency.count { it == ':' } in 2 .. 3) {
+                        dependencyManager.dependency(annotation.dependency)
+                        // Deconstructing Maven coordinates to variables for ease of use.
+                        val (group, artifact, version) = annotation.dependency.split(":")
+                        // Adding to the list of script dependencies for later use.
+                        scriptDependencies.add("$group.$artifact-$version.jar")
+                        // No easy way to figure out what has and what has been not been relocated, so we have to add both and then filter based on which file exists and which one doesn't.
+                        scriptDependencies.add("$group.$artifact-$version-relocated.jar")
+                    } else if (annotation.dependency.endsWith(".jar")) {
+                        scriptDependencies.add(annotation.dependency)
+                    }
                 }
                 // Configuring relocations specified via @Relocation.
                 is Relocation -> {

@@ -13,7 +13,7 @@ plugins {
     id("io.papermc.hangar-publish-plugin") version "0.1.4"
 }
 
-private val VERSION = "1.0.0"
+private val VERSION = "1.1.0"
 private val RUN_NUMBER = System.getenv("GITHUB_RUN_NUMBER") ?: "DEV"
 group = "dev.echonine.kite"
 version = "$VERSION+$RUN_NUMBER"

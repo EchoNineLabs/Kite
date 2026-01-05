@@ -3,6 +3,7 @@ package dev.echonine.kite.scripting
 import org.bukkit.command.CommandSender
 
 class CommandBuilder(val name: String) {
+    var prefix: String = "kite-script"
     var description: String = ""
     var permission: String? = null
     var usage: String = ""

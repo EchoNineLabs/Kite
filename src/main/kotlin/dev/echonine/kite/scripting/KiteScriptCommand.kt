@@ -4,7 +4,10 @@ import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 
 class KiteScriptCommand(private val commandBuilder: CommandBuilder) : Command(commandBuilder.name) {
+    var prefix: String
+
     init {
+        this.prefix = commandBuilder.prefix
         this.description = commandBuilder.description
         this.permission = commandBuilder.permission
         this.usage = commandBuilder.usage

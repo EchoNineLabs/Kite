@@ -98,7 +98,7 @@ class ScriptContext(
         val cmdData = CommandBuilder(name).apply(builder)
         val cmd = KiteScriptCommand(cmdData)
         commands.add(cmd)
-        Kite.instance?.server?.commandMap?.register(cmd.prefix, cmd)
+        Kite.instance?.server?.commandMap?.register(cmd.namespace, cmd)
         Kite.instance?.server?.syncCommands()
     }
 

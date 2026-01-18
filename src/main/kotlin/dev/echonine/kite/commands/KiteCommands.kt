@@ -140,7 +140,7 @@ class KiteCommands(plugin: Kite) : Command("kite") {
                 "load" -> scriptManager.gatherAvailableScriptFiles().map { it.name }
                     .filter { it !in scriptManager.getLoadedScripts().keys && it.startsWith(args[1], true) }
                 // Returning a list of all scripts.
-                "reload" -> scriptManager.gatherAvailableScriptFiles().map { it.name }
+                "reload" -> scriptManager.gatherAvailableScriptFiles().map { it.name }.filter { it.startsWith(args[1], true) }
                 // No completions available for this input - returning an empty list.
                 else -> emptyList()
             }

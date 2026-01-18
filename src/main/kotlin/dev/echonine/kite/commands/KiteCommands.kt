@@ -75,8 +75,11 @@ class KiteCommands(plugin: Kite) : Command("kite") {
     }
 
     private fun loadScript(sender: CommandSender, scriptName: String) = CoroutineScope(Dispatchers.IO).launch {
+        // Sending an error message if a script with the specified name does not exist.
+        if (scriptManager.gatherAvailableScriptFiles().find { it.name == scriptName } == null)
+            sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> does not exist.")
         // Sending an error message if a script is already loaded.
-        if (scriptManager.getLoadedScripts().containsKey(scriptName))
+        else if (scriptManager.getLoadedScripts().containsKey(scriptName))
             sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> is already loaded.")
         // Loading and sending a message according to the result.
         else if (scriptManager.load(scriptName))
@@ -92,11 +95,16 @@ class KiteCommands(plugin: Kite) : Command("kite") {
     }
 
     private fun reloadScript(sender: CommandSender, scriptName: String) = CoroutineScope(Dispatchers.Default).launch {
+        // Sending an error message if a script with the specified name does not exist.
+        if (scriptManager.gatherAvailableScriptFiles().find { it.name == scriptName } == null)
+            sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> does not exist.")
         // Reloading and sending a message according to the result.
-        scriptManager.unload(scriptName)
-        if (scriptManager.load(scriptName))
-            sender.sendRichMessage("<dark_gray>› <gray>Script <yellow>$scriptName<gray> has been successfully reloaded.")
-        else sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> could not be reloaded. Check console for errors.")
+        else {
+            scriptManager.unload(scriptName)
+            if (scriptManager.load(scriptName))
+                sender.sendRichMessage("<dark_gray>› <gray>Script <yellow>$scriptName<gray> has been successfully reloaded.")
+            else sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> could not be reloaded. Check console for errors.")
+        }
     }
 
     private fun reloadAllScripts(sender: CommandSender) = CoroutineScope(Dispatchers.Default).launch {

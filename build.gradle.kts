@@ -20,14 +20,16 @@ version = "$VERSION+$RUN_NUMBER"
 
 repositories {
     mavenCentral()
-    maven("https://repo.papermc.io/repository/maven-public/")
+    maven { name = "PaperMC"; url = uri("https://repo.papermc.io/repository/maven-public/") }
+    maven { name = "TheNextLvl"; url = uri("https://repo.thenextlvl.net/releases") }
 }
 
 dependencies {
     // Kotlin Standard Library
     paperLibrary(kotlin("stdlib"))
-    // Zapper (Runtime Dependencies)
+    // Runtime Dependencies
     paperLibrary("io.github.revxrsal:zapper.api:1.0.3")
+    paperLibrary("dev.faststats.metrics:bukkit:0.11.1")
     // Kotlin Scripting Libraries
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm")
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm-host")

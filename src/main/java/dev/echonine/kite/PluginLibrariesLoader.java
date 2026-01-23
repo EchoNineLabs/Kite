@@ -17,9 +17,21 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 // Downloading libraries directly from Maven Central may be considered a violation of their Terms of Service.
-// Usage of PaperMC repository is highly discouraged and this leaves Google's mirror as the most reliable option.
+// Usage of PaperMC repository is highly discouraged, and this leaves Google's mirror as the most reliable option.
 @SuppressWarnings("UnstableApiUsage")
 public final class PluginLibrariesLoader implements io.papermc.paper.plugin.loader.PluginLoader {
+
+    private static String MAVEN_CENTRAL_DEFAULT_MIRROR = "https://maven-central.storage-download.googleapis.com/maven2";
+
+    static {
+        try {
+            // Replacing Maven Central repository with a pre-configured mirror.
+            // See: https://docs.papermc.io/paper/dev/getting-started/paper-plugins/#loaders
+            MAVEN_CENTRAL_DEFAULT_MIRROR = (String) MavenLibraryResolver.class.getField("MAVEN_CENTRAL_DEFAULT_MIRROR").get(null);
+        } catch (final NoSuchFieldError | NoSuchFieldException | IllegalAccessException e) {
+            // NO OVERRIDE; IGNORE
+        }
+    }
 
     @Override
     public void classloader(final @NotNull PluginClasspathBuilder classpathBuilder) throws IllegalStateException {
@@ -42,17 +54,10 @@ public final class PluginLibrariesLoader implements io.papermc.paper.plugin.load
 
         public Stream<RemoteRepository> asRepositories() {
             return repositories.entrySet().stream().map(entry -> {
-                try {
-                    final String MAVEN_CENTRAL_DEFAULT_MIRROR = (String) MavenLibraryResolver.class.getField("MAVEN_CENTRAL_DEFAULT_MIRROR").get(null);
-                    // Replacing Maven Central repository with a pre-configured mirror.
-                    // See: https://docs.papermc.io/paper/dev/getting-started/paper-plugins/#loaders
-                    if (entry.getValue().contains("maven.org") == true || entry.getValue().contains("maven.apache.org") == true) {
-                        return new RemoteRepository.Builder(entry.getKey(), "default", MAVEN_CENTRAL_DEFAULT_MIRROR).build();
-                    }
-                    return new RemoteRepository.Builder(entry.getKey(), "default", entry.getValue()).build();
-                } catch (final NoSuchFieldError | NoSuchFieldException | IllegalAccessException e) {
-                    return new RemoteRepository.Builder(entry.getKey(), "default", "https://maven-central.storage-download.googleapis.com/maven2").build();
+                if (entry.getValue().contains("maven.org") == true || entry.getValue().contains("maven.apache.org") == true) {
+                    return new RemoteRepository.Builder(entry.getKey(), "default", MAVEN_CENTRAL_DEFAULT_MIRROR).build();
                 }
+                return new RemoteRepository.Builder(entry.getKey(), "default", entry.getValue()).build();
             });
         }
 

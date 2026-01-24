@@ -8,6 +8,10 @@ import dev.echonine.kite.api.annotations.Repository
 import dev.echonine.kite.scripting.configuration.compat.DynamicServerJarCompat
 import dev.echonine.kite.scripting.Script
 import dev.echonine.kite.scripting.ScriptContext
+import dev.echonine.kite.scripting.cache.ImportsCache
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.bukkit.Server
 import org.bukkit.plugin.java.JavaPlugin
 import revxrsal.zapper.DependencyManager
@@ -52,6 +56,10 @@ val libsDirectory by lazy {
 // Cache directory is where (script_name).(script_hash).cache.jar files are saved to.
 val cacheDirectory by lazy {
     File(Kite.instance?.dataFolder?.path ?: System.getProperty("user.dir", "."), "cache")
+}
+
+val importsCache by lazy {
+    ImportsCache()
 }
 
 @Suppress("JavaIoSerializableObjectMustHaveReadResolve")
@@ -132,6 +140,9 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 dependencies.append(JvmDependency(scriptDependencies.map { File(libsDirectory, it) }.filter { it.exists() }))
                 // Appending imported sources to the script.
                 importedSources.takeUnless { it.isEmpty() }?.let { importScripts.append(it) }
+                CoroutineScope(Dispatchers.IO).launch {
+                    importsCache.write(context.compilationConfiguration[displayName]!!, importedSources.map { it.file.path }.toList())
+                }
             }.asSuccess()
         })
     }
@@ -146,40 +157,26 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
             if (cacheDirectory.isDirectory || cacheDirectory.mkdirs()) {
                 // Configuring compilation cache.
                 compilationCache(CompiledScriptJarsCache { script, compilationConfiguration ->
+                    val name = compilationConfiguration[displayName]
+                    val checksum = MessageDigest.getInstance("MD5")
                     // Getting the MD5 checksum and including it in the file name.
                     // MD5 checksum acts as a file identifier here.
-                    val mainScriptHash = script.text.toByteArray().let {
-                        val md = MessageDigest.getInstance("MD5")
-                        md.update(it)
-                        md.digest().joinToString("") { byte -> "%02x".format(byte) }
+                    checksum.update(script.text.toByteArray())
+                    // Updating digest with all imported scripts.
+                    importsCache.cache[name]?.forEach {
+                        checksum.update(File(it).readBytes())
                     }
-                    // Also hash the imported scripts
-                    val importsHash = (compilationConfiguration[importScripts]
-                        ?: emptyList<FileScriptSource>()).joinToString("") { importedScript ->
-                        importedScript.text.toByteArray().let {
-                            val md = MessageDigest.getInstance("MD5")
-                            md.update(it)
-                            md.digest().joinToString("") { byte -> "%02x".format(byte) }
-                        }
-                    }
-
-                    // Creating the final hash by combining the main script hash and imports hash
-                    val hash = MessageDigest.getInstance("MD5").apply {
-                        update(mainScriptHash.toByteArray())
-                        update(importsHash.toByteArray())
-                    }.digest().joinToString("") { byte -> "%02x".format(byte) }
-                    
-                    val cacheFileName = "${compilationConfiguration[displayName]}.${hash}.cache.jar"
-                    
+                    // Converting checksum to a human-readable format so it can be included in the cache file name.
+                    val hash = checksum.digest().joinToString("") { "%02x".format(it) }
+                    val cacheFileName = "$name.$hash.cache.jar"
                     // Purging old cache files with different hashes (not the current one).
                     cacheDirectory.listFiles()
                         ?.filter {
-                            it.name.endsWith(".cache.jar") && 
-                            it.name.split(".").first() == compilationConfiguration[displayName] &&
+                            it.name.endsWith(".cache.jar") &&
+                            it.name.split(".").first() == name &&
                             it.name != cacheFileName
                         }
                         ?.forEach { it.delete() }
-                    
                     return@CompiledScriptJarsCache File(cacheDirectory, cacheFileName)
                 })
             }

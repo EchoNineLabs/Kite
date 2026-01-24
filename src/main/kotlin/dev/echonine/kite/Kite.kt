@@ -9,7 +9,8 @@ import org.bukkit.plugin.java.JavaPlugin
 class Kite : JavaPlugin() {
 
     internal lateinit var scriptManager: ScriptManager
-    internal lateinit var metrics: Metrics
+    internal lateinit var bStats: Metrics
+    internal lateinit var fastStats: dev.faststats.core.Metrics
 
     companion object {
         var instance: Kite? = null
@@ -24,14 +25,16 @@ class Kite : JavaPlugin() {
         // Registering command(s).
         this.server.commandMap.register("kite", KiteCommands(this))
         // Setting up bStats metrics.
-        this.metrics = Metrics(this, 27748)
+        this.bStats = Metrics(this, 27748)
         // Setting up FastStats metrics.
-        BukkitMetrics.factory().token("07d3945a3186e2496be316aaf948c24b").create(this);
+        this.fastStats = BukkitMetrics.factory().token("07d3945a3186e2496be316aaf948c24b").create(this);
     }
 
     override fun onDisable() {
-        // Disconnecting from bStats.
-        metrics.shutdown()
+        // Shutting down bStats SDK.
+        bStats.shutdown()
+        // Shutting down FastStats SDK.
+        fastStats.shutdown()
     }
 
 }

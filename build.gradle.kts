@@ -91,12 +91,6 @@ tasks.modrinth {
     dependsOn(tasks.modrinthSyncBody)
 }
 
-publishing.publications {
-    create("maven", MavenPublication::class) {
-        from(components["kotlin"])
-    }
-}
-
 // Returns the formatted release name.
 tasks.register("getRelease") {
     print(VERSION)
@@ -142,6 +136,11 @@ hangarPublish {
             }
         }
     }
+}
+
+java {
+    withSourcesJar()
+    withJavadocJar()
 }
 
 publishing {

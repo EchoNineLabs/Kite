@@ -9,9 +9,7 @@ import dev.echonine.kite.scripting.configuration.compat.DynamicServerJarCompat
 import dev.echonine.kite.scripting.Script
 import dev.echonine.kite.scripting.ScriptContext
 import dev.echonine.kite.scripting.cache.ImportsCache
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.bukkit.Server
 import org.bukkit.plugin.java.JavaPlugin
 import revxrsal.zapper.DependencyManager
@@ -134,14 +132,20 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
             }}
 
             return@onAnnotations ScriptCompilationConfiguration(context.compilationConfiguration) {
+                val name = context.compilationConfiguration[displayName]!!
                 // Downloading declared libraries.
                 dependencyManager.load()
                 // Adding downloaded libraries as dependencies.
                 dependencies.append(JvmDependency(scriptDependencies.map { File(libsDirectory, it) }.filter { it.exists() }))
                 // Appending imported sources to the script.
                 importedSources.takeUnless { it.isEmpty() }?.let { importScripts.append(it) }
-                CoroutineScope(Dispatchers.IO).launch {
-                    importsCache.write(context.compilationConfiguration[displayName]!!, importedSources.map { it.file.path }.toList())
+                // Appending to the imports cache.
+                runBlocking {
+                    // Writing (non-empty) imported script paths only on the first attempt.
+                    // Temporary fix for imported scripts being able to override cached dependency tree.
+                    importedSources.map { it.file.path }.takeIf { it.isNotEmpty() && importsCache.cache[name] == null }?.also {
+                        importsCache.write(name, it)
+                    }
                 }
             }.asSuccess()
         })

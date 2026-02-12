@@ -9,6 +9,9 @@ import dev.echonine.kite.scripting.configuration.compat.DynamicServerJarCompat
 import dev.echonine.kite.scripting.Script
 import dev.echonine.kite.scripting.ScriptContext
 import dev.echonine.kite.scripting.cache.ImportsCache
+import dev.echonine.kite.util.getKiteDirectory
+import dev.echonine.kite.util.isEntryPoint
+import dev.echonine.kite.util.isServerAvailable
 import kotlinx.coroutines.runBlocking
 import org.bukkit.Server
 import org.bukkit.plugin.java.JavaPlugin
@@ -47,18 +50,16 @@ val updatedClasspath by lazy {
 }
 
 // Libraries directory is where @Dependency declarations are downloaded to.
-val libsDirectory by lazy {
-    File(Kite.instance?.dataFolder?.path ?: System.getProperty("user.dir", "."), "libs")
-}
+val libsDirectory: File by lazy { getKiteDirectory().resolve("libs").toFile() }
 
 // Cache directory is where (script_name).(script_hash).cache.jar files are saved to.
-val cacheDirectory by lazy {
-    File(Kite.instance?.dataFolder?.path ?: System.getProperty("user.dir", "."), "cache")
-}
+val cacheDirectory: File by lazy { getKiteDirectory().resolve("cache").toFile() }
 
 val importsCache by lazy {
-    ImportsCache()
+    ImportsCache(cacheDirectory)
 }
+
+var hasCompilationOccurred = false
 
 @Suppress("JavaIoSerializableObjectMustHaveReadResolve")
 object KiteCompilationConfiguration : ScriptCompilationConfiguration({
@@ -87,7 +88,20 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
     )
 
     refineConfiguration {
+        // Currently, due to how each script can trigger 'refineConfiguration' in parallel, this log can appear a few times.
+        // Will be disabled for the time being and re-enabled once parallel loading is either removed or fixed.
+        beforeParsing { context ->
+            if (!hasCompilationOccurred) {
+                Kite.instance?.logger?.warning("Initializing Kotlin parser and compiler for the first time. This can take a few seconds...")
+                hasCompilationOccurred = true
+            }
+            return@beforeParsing context.compilationConfiguration.asSuccess()
+        }
         onAnnotations(Import::class, Dependency::class, Repository::class, Relocation::class, handler = { context ->
+            // Skipping Kite annotation processor if running outside of server context.
+            // At this time, these annotations cannot be easily instructed to work inside IDEA due to technical limitations.
+            if (!isServerAvailable)
+                return@onAnnotations context.compilationConfiguration.asSuccess()
             // Collecting all defined annotations.
             val annotations = context.collectedData?.get(ScriptCollectedData.collectedAnnotations)
                 ?.map { it.annotation }?.takeIf { it.isNotEmpty() }
@@ -130,25 +144,35 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                     }
                 }
             }}
-
             return@onAnnotations ScriptCompilationConfiguration(context.compilationConfiguration) {
-                val name = context.compilationConfiguration[displayName]!!
-                // Downloading declared libraries.
                 dependencyManager.load()
                 // Adding downloaded libraries as dependencies.
                 dependencies.append(JvmDependency(scriptDependencies.map { File(libsDirectory, it) }.filter { it.exists() }))
                 // Appending imported sources to the script.
                 importedSources.takeUnless { it.isEmpty() }?.let { importScripts.append(it) }
+            }.asSuccess()
+        })
+
+        beforeCompiling { context ->
+            return@beforeCompiling ScriptCompilationConfiguration(context.compilationConfiguration) {
+                val name = context.compilationConfiguration[ScriptCompilationConfiguration.displayName]!!
+                // Skipping '.imports' write for scripts that are not entry scripts.
+                // This is a safety net for all sorts of issues coming from child scripts @Import-ing other scripts.
+                if (!isEntryPoint((context.script as? FileBasedScriptSource)!!.file))
+                    return@ScriptCompilationConfiguration
+                // Getting properties.
+                val imports = context.compilationConfiguration[ScriptCompilationConfiguration.importScripts]
                 // Appending to the imports cache.
                 runBlocking {
                     // Writing (non-empty) imported script paths only on the first attempt.
                     // Temporary fix for imported scripts being able to override cached dependency tree.
-                    importedSources.map { it.file.path }.takeIf { it.isNotEmpty() && importsCache.cache[name] == null }?.also {
+                    imports?.mapNotNull { (it as? FileScriptSource)?.file?.path }?.also {
                         importsCache.write(name, it)
                     }
                 }
             }.asSuccess()
-        })
+        }
+
     }
 
     ide {
@@ -173,20 +197,16 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                     // Converting checksum to a human-readable format so it can be included in the cache file name.
                     val hash = checksum.digest().joinToString("") { "%02x".format(it) }
                     val cacheFileName = "$name.$hash.cache.jar"
+                    println("Script Cache (EXISTS = ${cacheDirectory.resolve(cacheFileName).exists()}, FILE = $cacheFileName)")
                     // Purging old cache files with different hashes (not the current one).
                     cacheDirectory.listFiles()
-                        ?.filter {
-                            it.name.endsWith(".cache.jar") &&
-                            it.name.split(".").first() == name &&
-                            it.name != cacheFileName
-                        }
+                        ?.filter { it.name.endsWith(".cache.jar") && it.name.split(".").first() == name && it.name != cacheFileName }
                         ?.forEach { it.delete() }
-                    return@CompiledScriptJarsCache File(cacheDirectory, cacheFileName)
+                    return@CompiledScriptJarsCache cacheDirectory.resolve(cacheFileName)
                 })
             }
         }
     })
-
 })
 
 val PAPER_IMPORTS = listOf(

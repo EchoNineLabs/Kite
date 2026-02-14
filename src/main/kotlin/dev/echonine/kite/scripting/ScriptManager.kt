@@ -39,6 +39,7 @@ internal class ScriptManager(val plugin: Kite) {
     private val cacheFolder = File(plugin.dataFolder, "cache")
     private val loadedScripts = mutableMapOf<String, ScriptContext>()
     private val logExecutor = Executors.newSingleThreadExecutor()
+    private val scriptingHost = BasicJvmScriptingHost()
 
     // Returns an unmodifiable view of all loaded scripts.
     fun getLoadedScripts(): @Unmodifiable Map<String, ScriptContext> = loadedScripts.toMap()
@@ -142,7 +143,7 @@ internal class ScriptManager(val plugin: Kite) {
         }
         // Compiling/loading the script. Time the operation to verify cache performance.
         val (compiledScript, elapsedTime) = measureTimedValue {
-            BasicJvmScriptingHost().eval(holder.entryPoint.toScriptSource(), compilationConfiguration, evaluationConfiguration)
+            scriptingHost.eval(holder.entryPoint.toScriptSource(), compilationConfiguration, evaluationConfiguration)
         }
         // Logging diagnostics from a single-thread queue. Otherwise, messages can be displayed in wrong order due to parallel compilation.
         logExecutor.submit {

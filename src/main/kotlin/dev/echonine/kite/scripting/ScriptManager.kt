@@ -16,8 +16,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger
-import org.jetbrains.annotations.ApiStatus
-import org.jetbrains.annotations.ApiStatus.Internal
 import org.jetbrains.annotations.Unmodifiable
 import java.io.File
 import java.util.concurrent.Executors
@@ -32,11 +30,13 @@ import kotlin.script.experimental.host.toScriptSource
 import kotlin.script.experimental.jvm.baseClassLoader
 import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
+import kotlin.time.measureTimedValue
 
 internal class ScriptManager(val plugin: Kite) {
 
     private val logger = ComponentLogger.logger("Kite")
     private val scriptsFolder = File(plugin.dataFolder, "scripts")
+    private val cacheFolder = File(plugin.dataFolder, "cache")
     private val loadedScripts = mutableMapOf<String, ScriptContext>()
     private val logExecutor = Executors.newSingleThreadExecutor()
 
@@ -73,7 +73,7 @@ internal class ScriptManager(val plugin: Kite) {
                     compileScriptAsync(holder)
                 } catch (e: Throwable) {
                     // Logging error(s) to the console and returning null.
-                    logger.errorRich("Script <yellow>${holder.name} <red>reported errors during compilation.")
+                    logger.errorRich("Script <yellow>${holder.name}</yellow> reported error(s) during compilation.")
                     logger.errorRich("  (1) ${e.javaClass.name}: ${e.message}")
                     if (e.cause != null)
                         logger.errorRich("  (2) ${e.cause!!.javaClass.name}: ${e.cause!!.message}")
@@ -126,13 +126,10 @@ internal class ScriptManager(val plugin: Kite) {
         val compilationConfiguration = KiteCompilationConfiguration.with {
             displayName(script.name)
         }
-
-        // Get cache file and record its last modified time before compilation
-        val cacheDirectory = File(plugin.dataFolder, "cache")
-        val cacheFile = cacheDirectory.listFiles()
-            ?.firstOrNull { it.name.startsWith("${script.name}.") && it.name.endsWith(".cache.jar") }
+        // Getting the cache file and its last modified date before compilation. Used in a later step for determining whether cache was used or not.
+        val cacheFile = cacheFolder.listFiles()?.firstOrNull { it.name.startsWith("${script.name}.") && it.name.endsWith(".cache.jar") }
         val cacheLastModified = cacheFile?.lastModified() ?: 0L
-
+        // Creating EvaluationConfiguration based on KiteEvaluationConfiguration template.
         val evaluationConfiguration = KiteEvaluationConfiguration.with {
             jvm {
                 baseClassLoader(Kite::class.java.classLoader)
@@ -144,22 +141,16 @@ internal class ScriptManager(val plugin: Kite) {
             ))
         }
         // Compiling/loading the script. Time the operation to verify cache performance.
-        val startTime = System.currentTimeMillis()
-        val compiledScript = BasicJvmScriptingHost().eval(holder.entryPoint.toScriptSource(), compilationConfiguration, evaluationConfiguration)
-        val elapsedTime = System.currentTimeMillis() - startTime
-
-        // Check if cache was used or created
-        val cacheFileAfter = cacheDirectory.listFiles()
-            ?.firstOrNull { it.name.startsWith("${script.name}.") && it.name.endsWith(".cache.jar") }
-        val wasCacheUsed = cacheFileAfter != null && cacheFileAfter.lastModified() == cacheLastModified
-
-        if (wasCacheUsed) {
-            logger.infoRich("Loaded <yellow>${holder.name}<reset> from cache in <yellow>${elapsedTime}ms<reset>")
-        } else {
-            logger.infoRich("Compiled <yellow>${holder.name}<reset> in <yellow>${elapsedTime}ms<reset>")
+        val (compiledScript, elapsedTime) = measureTimedValue {
+            BasicJvmScriptingHost().eval(holder.entryPoint.toScriptSource(), compilationConfiguration, evaluationConfiguration)
         }
-        // Logging diagnostics from a single-thread queue. Otherwise messages can be displayed in wrong order due to parallel compilation.
+        // Logging diagnostics from a single-thread queue. Otherwise, messages can be displayed in wrong order due to parallel compilation.
         logExecutor.submit {
+            if (cacheFile != null && cacheFile.lastModified() == cacheLastModified) {
+                logger.infoRich("Compiled <yellow>${holder.name}</yellow> from cache in <yellow>${elapsedTime.inWholeMilliseconds}ms</yellow>.")
+            } else {
+                logger.infoRich("Compiled <yellow>${holder.name}</yellow> in <yellow>${elapsedTime.inWholeMilliseconds}ms</yellow>.")
+            }
             val errorCount = compiledScript.reports.count { it.severity == Severity.FATAL || it.severity == Severity.ERROR || it.severity == Severity.WARNING }
             if (compiledScript is ResultWithDiagnostics.Failure)
                 logger.errorRich("Script <yellow>${holder.name}</yellow> reported <yellow>$errorCount</yellow> error(s) during compilation:")
@@ -198,14 +189,14 @@ internal class ScriptManager(val plugin: Kite) {
                     plugin.server.globalRegionScheduler.execute(plugin, {
                         loadedScripts[script.name] = script
                         script.runOnLoad()
-                        logger.infoRich("Script <yellow>${holder.name}<reset> has been successfully loaded.")
+                        logger.infoRich("Script <yellow>${holder.name}</yellow> has been successfully loaded.")
                         // Resuming the coroutine.
                         coroutine.resume(true)
                     })
                 } ?: coroutine.resume(false)
             } catch (e: Exception) {
                 // Logging error(s) to the console and returning null.
-                logger.errorRich("Script <yellow>${holder.name} reported errors during compilation.")
+                logger.errorRich("Script <yellow>${holder.name}</yellow> reported errors during compilation.")
                 logger.errorRich("  (1) ${e.javaClass.name}: ${e.message}")
                 if (e.cause != null)
                     logger.errorRich("  (2) ${e.cause!!.javaClass.name}: ${e.cause!!.message}")
@@ -223,7 +214,6 @@ internal class ScriptManager(val plugin: Kite) {
     }
 
     // Unloads specified script by it's context.
-    @Internal
     private suspend fun unload(script: ScriptContext): Boolean = suspendCancellableCoroutine { coroutine ->
         plugin.server.globalRegionScheduler.execute(plugin, {
             script.runOnUnload()

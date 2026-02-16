@@ -1,11 +1,16 @@
 package dev.echonine.kite.scripting
 
+import dev.echonine.kite.Kite
 import dev.echonine.kite.util.extensions.nameWithoutExtensions
 import java.io.File
 
 data class ScriptHolder(val name: String, val entryPoint: File) {
 
     companion object {
+
+        /**
+         * Returns [ScriptHolder] of the specified script file or directory or `null` if it does not exist.
+         */
         fun fromName(name: String, scriptsDirectory: File): ScriptHolder? {
             val files = scriptsDirectory.listFiles() ?: emptyArray()
             // Returning ScriptHolder of specified script file, if exists.
@@ -21,6 +26,18 @@ data class ScriptHolder(val name: String, val entryPoint: File) {
             // Otherwise, no such script exist - returning null.
             return null
         }
+
+        fun isEntryPoint(file: File): Boolean {
+            // plugins/Kite/scripts/test.kite.kts
+            if (file.name.endsWith(".kite.kts") && Kite.Structure.SCRIPTS_DIR.canonicalFile == file.parentFile.canonicalFile)
+                return true
+            // plugins/Kite/scripts/foo/main.kite.kts
+            if (file.name == "main.kite.kts" && Kite.Structure.SCRIPTS_DIR.canonicalFile == file.parentFile?.parentFile?.canonicalFile)
+                return true
+            // ...
+            return false
+        }
+
     }
 
 }

@@ -188,29 +188,29 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
 
     hostConfiguration(ScriptingHostConfiguration {
         jvm {
-            // Creating directories in case they don't exist yet.
-            if (Kite.Structure.CACHE_DIR.isDirectory || Kite.Structure.CACHE_DIR.mkdirs()) {
-                // Configuring compilation cache.
-                compilationCache(CompiledScriptJarsCache { script, compilationConfiguration ->
-                    val name = compilationConfiguration[displayName]
-                    val checksum = MessageDigest.getInstance("MD5")
-                    // Getting the MD5 checksum and including it in the file name.
-                    // MD5 checksum acts as a file identifier here.
-                    checksum.update(script.text.toByteArray())
-                    // Updating digest with all imported scripts.
-                    importsCache.cache[name]?.forEach {
-                        checksum.update(File(it).readBytes())
-                    }
-                    // Converting checksum to a human-readable format so it can be included in the cache file name.
-                    val hash = checksum.digest().joinToString("") { "%02x".format(it) }
-                    val cacheFileName = "$name.$hash.cache.jar"
-                    // Purging old cache files with different hashes (not the current one).
-                    Kite.Structure.CACHE_DIR.listFiles()
-                        ?.filter { it.name.endsWith(".cache.jar") && it.name.split(".").first() == name && it.name != cacheFileName }
-                        ?.forEach { it.delete() }
-                    return@CompiledScriptJarsCache Kite.Structure.CACHE_DIR.resolve(cacheFileName)
-                })
-            }
+            // Configuring compilation cache.
+            compilationCache(CompiledScriptJarsCache { script, compilationConfiguration ->
+                // Creating cache directory in case it does not exist.
+                Kite.Structure.CACHE_DIR.mkdirs()
+                // Creating directories in case they don't exist yet.
+                val name = compilationConfiguration[displayName]
+                val checksum = MessageDigest.getInstance("MD5")
+                // Getting the MD5 checksum and including it in the file name.
+                // MD5 checksum acts as a file identifier here.
+                checksum.update(script.text.toByteArray())
+                // Updating digest with all imported scripts.
+                importsCache.cache[name]?.forEach {
+                    checksum.update(File(it).readBytes())
+                }
+                // Converting checksum to a human-readable format so it can be included in the cache file name.
+                val hash = checksum.digest().joinToString("") { "%02x".format(it) }
+                val cacheFileName = "$name.$hash.cache.jar"
+                // Purging old cache files with different hashes (not the current one).
+                Kite.Structure.CACHE_DIR.listFiles()
+                    ?.filter { it.name.endsWith(".cache.jar") && it.name.split(".").first() == name && it.name != cacheFileName }
+                    ?.forEach { it.delete() }
+                return@CompiledScriptJarsCache Kite.Structure.CACHE_DIR.resolve(cacheFileName)
+            })
         }
     })
 })

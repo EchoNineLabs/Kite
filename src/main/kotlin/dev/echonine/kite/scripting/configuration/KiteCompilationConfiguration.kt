@@ -199,8 +199,8 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 // MD5 checksum acts as a file identifier here.
                 checksum.update(script.text.toByteArray())
                 // Updating digest with all imported scripts.
-                importsCache.cache[name]?.forEach {
-                    checksum.update(File(it).readBytes())
+                importsCache.cache[name]?.map { File(it) }?.filter { it.exists() }?.forEach {
+                    checksum.update(it.readBytes())
                 }
                 // Converting checksum to a human-readable format so it can be included in the cache file name.
                 val hash = checksum.digest().joinToString("") { "%02x".format(it) }

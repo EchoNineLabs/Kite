@@ -11,6 +11,8 @@ import dev.echonine.kite.scripting.ScriptContext
 import dev.echonine.kite.scripting.ScriptHolder
 import dev.echonine.kite.scripting.cache.ImportsCache
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.bukkit.Server
 import org.bukkit.plugin.java.JavaPlugin
 import revxrsal.zapper.DependencyManager
@@ -48,6 +50,10 @@ val updatedClasspath by lazy {
 }
 
 val importsCache = ImportsCache()
+
+// Mutex *should* potentially solve concurrency issues when two scripts are set to load the *same* dependency at once.
+// This can be a side effect of parallel compilation.
+val zapperMutex = Mutex()
 
 // var hasCompilationOccurred = false
 
@@ -140,7 +146,13 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 }
             }}
             return@onAnnotations ScriptCompilationConfiguration(context.compilationConfiguration) {
-                dependencyManager.load()
+                // Mutex *should* potentially solve concurrency issues when two scripts are set to load the *same* dependency at once.
+                // This can be a side effect of parallel compilation.
+                runBlocking {
+                    zapperMutex.withLock {
+                        dependencyManager.load()
+                    }
+                }
                 // Adding downloaded libraries as dependencies.
                 dependencies.append(JvmDependency(scriptDependencies.map { File(Kite.Structure.LIBS_DIR, it) }.filter { it.exists() }))
                 // Appending imported sources to the script.

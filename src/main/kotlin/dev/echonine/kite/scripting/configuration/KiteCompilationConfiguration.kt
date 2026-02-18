@@ -30,23 +30,21 @@ import kotlin.script.experimental.jvmhost.CompiledScriptJarsCache
 
 val updatedClasspath by lazy {
     val classpath = mutableListOf<File>()
-
     // Resolves all plugins' classpaths to make the compiler recognize APIs of external plugins.
     Kite.instance?.server?.pluginManager?.plugins?.flatMap {
         classpathFromClassloader(it.javaClass.classLoader) ?: emptyList()
     }?.let { pluginClasspath ->
         classpath.addAll(pluginClasspath)
     }
-
-    // Check if dynamic server JAR compatibility mode is enabled
+    // Checking if dynamic server JAR compatibility mode is enabled.
     if (DynamicServerJarCompat.isEnabled()) {
-        // Find the Paper API JAR using enhanced discovery for dynamic server architectures
+        // Finding the Paper API JAR using and adding to the classpath.
         DynamicServerJarCompat.findServerJar()?.let { paperApiJar ->
             classpath.add(paperApiJar)
         }
     }
-
-    classpath.distinct()
+    // Removing duplicated entries and returning the list.
+    return@lazy classpath.distinct()
 }
 
 val importsCache = ImportsCache()
@@ -105,7 +103,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 ?: return@onAnnotations context.compilationConfiguration.asSuccess()
             val scriptBaseDir = (context.script as? FileBasedScriptSource)?.file?.parentFile
             val importedSources: MutableList<FileScriptSource> = mutableListOf()
-            // We don't want to share the instance of DependencyManager between scripts / compiler runs as it can easily store up on stale repositories and/or dependencies.
+            // We don't want to share the instance of DependencyManager between scripts / compiler runs as it can easily store up on stale repositories and dependencies.
             val dependencyManager = DependencyManager(Kite.Structure.LIBS_DIR, URLClassLoaderWrapper.wrap(Kite::class.java.classLoader as URLClassLoader))
             // List of dependencies; for later use when appending them to the compilation config.
             val scriptDependencies: MutableList<String> = mutableListOf()
@@ -163,16 +161,15 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
         beforeCompiling { context ->
             return@beforeCompiling ScriptCompilationConfiguration(context.compilationConfiguration) {
                 val name = context.compilationConfiguration[ScriptCompilationConfiguration.displayName]!!
-                // Skipping '.imports' write for scripts that are not entry scripts.
+                // Skipping imports cache writes by scripts that are not entry scripts.
                 // This is a safety net for all sorts of issues coming from child scripts @Import-ing other scripts.
                 if (!ScriptHolder.isEntryPoint((context.script as? FileBasedScriptSource)!!.file))
                     return@ScriptCompilationConfiguration
-                // Getting properties.
+                // Getting all imported scripts added to the configuration via annotation processor.
                 val imports = context.compilationConfiguration[ScriptCompilationConfiguration.importScripts]
-                // Appending to the imports cache.
+                // Appending to the imports cache. Must be launched in a coroutine since ImportsCache#write is a suspend function backed by Mutex.
                 runBlocking {
-                    // Writing (non-empty) imported script paths only on the first attempt.
-                    // Temporary fix for imported scripts being able to override cached dependency tree.
+                    // Writing non-empty imported script paths to the imports cache.
                     imports?.mapNotNull { (it as? FileScriptSource)?.file?.path }?.also {
                         importsCache.write(name, it)
                     }

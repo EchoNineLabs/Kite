@@ -13,7 +13,7 @@ data class ScriptHolder(val name: String, val entryPoint: File) {
          */
         fun fromName(name: String, scriptsDirectory: File): ScriptHolder? {
             val files = scriptsDirectory.listFiles() ?: emptyArray()
-            // Returning ScriptHolder of specified script file, if exists.
+            // Returning ScriptHolder of the specified script file, if exists.
             if (files.contains(File(scriptsDirectory, "$name.kite.kts")))
                 return ScriptHolder(name, File(scriptsDirectory, "$name.kite.kts"))
             // Looking for a script directory with specified name.
@@ -23,18 +23,21 @@ data class ScriptHolder(val name: String, val entryPoint: File) {
             // Returning ScriptHolder of specified script directory, if exists.
             if (scriptFolder != null)
                 return ScriptHolder(name, File(scriptFolder, "main.kite.kts"))
-            // Otherwise, no such script exist - returning null.
+            // Otherwise, no such script exists - returning null.
             return null
         }
 
+        /**
+         * Returns `true` if the specified file is an entry point script, `false` otherwise.
+         */
         fun isEntryPoint(file: File): Boolean {
-            // plugins/Kite/scripts/test.kite.kts
+            // (Scenario 1) plugins/Kite/scripts/test.kite.kts
             if (file.name.endsWith(".kite.kts") && Kite.Structure.SCRIPTS_DIR.canonicalFile == file.parentFile.canonicalFile)
                 return true
-            // plugins/Kite/scripts/foo/main.kite.kts
+            // (Scenario 2) plugins/Kite/scripts/foo/main.kite.kts
             if (file.name == "main.kite.kts" && Kite.Structure.SCRIPTS_DIR.canonicalFile == file.parentFile?.parentFile?.canonicalFile)
                 return true
-            // ...
+            // Other scenarios are not currently supported. File in question is an entry point script.
             return false
         }
 

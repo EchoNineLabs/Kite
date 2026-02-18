@@ -48,23 +48,26 @@ internal class ScriptManager(val plugin: Kite) {
     fun isScriptLoaded(name: String): Boolean = loadedScripts.containsKey(name)
 
     // Collects all available script files to a list and returns it.
-    fun gatherAvailableScriptFiles(): List<ScriptHolder> {
-        // Creating 'plugins/Kite/scripts/' directory in case it doesn't exist.
-        if (!scriptsFolder.exists())
-            scriptsFolder.mkdirs()
-        // Otherwise, iterating over all files inside scripts directory.
-        else if (scriptsFolder.isDirectory) {
-            return scriptsFolder.listFiles()
-                .mapNotNull { ScriptHolder.fromName(it.nameWithoutExtensions, scriptsFolder) }
-                .distinctBy { it.name }
-                .toList()
+    fun gatherAvailableScriptFiles(logDuplicates: Boolean = false): List<ScriptHolder> {
+        // Creating scripts directory in case it does not exist.
+        scriptsFolder.mkdirs()
+        // Otherwise, iterating over all files inside scripts directory and gathering them to a list.
+        // If logDuplicates is set to true, conflicting scripts are logged to the console.
+        if (scriptsFolder.isDirectory) {
+            val allScripts = scriptsFolder.listFiles().mapNotNull { ScriptHolder.fromName(it.nameWithoutExtensions, scriptsFolder) }
+            if (logDuplicates) {
+                allScripts.groupBy { it.name }.values.filter { it.size > 1 }.flatten().drop(1).forEach {
+                    logger.errorRich("Conflicting script <yellow>${it.entryPoint.toRelativeString(scriptsFolder)}</yellow> will not be loaded. Other script named <yellow>${it.name}</yellow> has taken priority and will be loaded instead.")
+                }
             }
+            return allScripts.distinctBy { it.name }.sortedBy { it.name }
+        }
         return emptyList()
     }
 
     // Compiles and loads all available scripts.
     fun loadAll() {
-        val scriptHolders = gatherAvailableScriptFiles()
+        val scriptHolders = gatherAvailableScriptFiles(true)
         logger.infoRich("Compiling <yellow>${scriptHolders.size} <reset>script(s)...")
         // Compiling all available scripts in parallel.
         val compiledScripts = runBlocking {

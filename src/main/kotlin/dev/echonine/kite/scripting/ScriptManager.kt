@@ -17,7 +17,6 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger
 import org.jetbrains.annotations.Unmodifiable
-import java.io.File
 import java.util.concurrent.Executors
 import kotlin.coroutines.resume
 import kotlin.script.experimental.api.ResultWithDiagnostics
@@ -35,40 +34,42 @@ import kotlin.time.measureTimedValue
 internal class ScriptManager(val plugin: Kite) {
 
     private val logger = ComponentLogger.logger("Kite")
-    private val scriptsFolder = File(plugin.dataFolder, "scripts")
-    private val cacheFolder = File(plugin.dataFolder, "cache")
     private val loadedScripts = mutableMapOf<String, ScriptContext>()
     private val logExecutor = Executors.newSingleThreadExecutor()
     private val scriptingHost = BasicJvmScriptingHost()
 
-    // Returns an unmodifiable view of all loaded scripts.
+    /**
+     * Returns an unmodifiable view of all loaded scripts.
+     */
     fun getLoadedScripts(): @Unmodifiable Map<String, ScriptContext> = loadedScripts.toMap()
 
-    // Returns true if specified script is loaded.
+    /**
+     * Returns true if a script with the specified name is currently loaded.
+     */
     fun isScriptLoaded(name: String): Boolean = loadedScripts.containsKey(name)
 
-    // Collects all available script files to a list and returns it.
+    /**
+     * Collects all available script files to a list and returns it.
+     */
     fun gatherAvailableScriptFiles(): List<ScriptHolder> {
-        // Creating 'plugins/Kite/scripts/' directory in case it doesn't exist.
-        if (!scriptsFolder.exists())
-            scriptsFolder.mkdirs()
+        // Creating scripts directory in case it does not exist.
+        Kite.Structure.SCRIPTS_DIR.mkdirs()
         // Otherwise, iterating over all files inside scripts directory.
-        else if (scriptsFolder.isDirectory) {
-            return scriptsFolder.listFiles()
-                .mapNotNull { ScriptHolder.fromName(it.nameWithoutExtensions, scriptsFolder) }
-                .distinctBy { it.name }
-                .toList()
-            }
-        return emptyList()
+        return Kite.Structure.SCRIPTS_DIR.listFiles()
+            ?.mapNotNull { ScriptHolder.fromName(it.nameWithoutExtensions, Kite.Structure.SCRIPTS_DIR) }
+            ?.distinctBy { it.name }
+            ?.toList() ?: emptyList()
     }
 
-    // Compiles and loads all available scripts.
+    /**
+     * Compiles and loads all available scripts.
+     */
     fun loadAll() {
         val scriptHolders = gatherAvailableScriptFiles()
         logger.infoRich("Compiling <yellow>${scriptHolders.size} <reset>script(s)...")
         // Compiling all available scripts in parallel.
         val compiledScripts = runBlocking {
-//            primeScriptingEngine()
+            // primeScriptingEngine()
             scriptHolders.map { holder -> async(Dispatchers.Default) {
                 try {
                     compileScriptAsync(holder)
@@ -119,7 +120,10 @@ internal class ScriptManager(val plugin: Kite) {
 
 
 
-    // Compiles specified script file and returns the result.
+    /**
+     * Compiles script backed by the specified [ScriptHolder] instance and returns the result.
+     * In case compilation fails, a `null` is returned instead.
+     */
     private suspend fun compileScriptAsync(holder: ScriptHolder): ScriptContext? = withContext(Dispatchers.IO) {
         // Creating a new instance of ScriptContext. Name of the script either file name with no extensions or script's folder name.
         val script = ScriptContext(holder.name, holder.entryPoint)
@@ -128,7 +132,7 @@ internal class ScriptManager(val plugin: Kite) {
             displayName(script.name)
         }
         // Getting the cache file and its last modified date before compilation. Used in a later step for determining whether cache was used or not.
-        val cacheFile = cacheFolder.listFiles()?.firstOrNull { it.name.startsWith("${script.name}.") && it.name.endsWith(".cache.jar") }
+        val cacheFile = Kite.Structure.CACHE_DIR.listFiles()?.firstOrNull { it.name.startsWith("${script.name}.") && it.name.endsWith(".cache.jar") }
         val cacheLastModified = cacheFile?.lastModified() ?: 0L
         // Creating EvaluationConfiguration based on KiteEvaluationConfiguration template.
         val evaluationConfiguration = KiteEvaluationConfiguration.with {
@@ -170,10 +174,13 @@ internal class ScriptManager(val plugin: Kite) {
         return@withContext if (compiledScript !is ResultWithDiagnostics.Failure) script else null
     }
 
-    // Compiles and loads specified script. Name must be either script's file name, or name of directory containing main.kite.kts file.
+    /**
+     * Compiles and loads a script with the specified name.
+     * Name must be either the script's file name or a name of a directory containing a `main.kite.kts` file.
+     */
     suspend fun load(name: String): Boolean {
         // Finding script by the specified name. Returning false if not found.
-        val holder = ScriptHolder.fromName(name, scriptsFolder) ?: return false
+        val holder = ScriptHolder.fromName(name, Kite.Structure.SCRIPTS_DIR) ?: return false
         // Returning false if already loaded.
         if (loadedScripts.containsKey(holder.name))
             return false
@@ -207,7 +214,9 @@ internal class ScriptManager(val plugin: Kite) {
         }
     }
 
-    // Unloads specified script by it's name. Returns false if script isn't loaded.
+    /**
+     * Unloads a specified script by its name. Returns `false` if no such script is currently loaded.
+     */
     suspend fun unload(name: String): Boolean {
         return loadedScripts[name]?.let {
             return unload(it)

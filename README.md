@@ -7,7 +7,7 @@
 **Kite** is plugin that provides a Kotlin scripting runtime for Paper-based Minecraft servers.  
 Designed for small and simple tasks and serves as a much more powerful alternative to Skript and other scripting plugins.
 
-<img width="2817" height="849" alt="image" src="https://github.com/user-attachments/assets/bbaa478a-92e0-4379-b75d-fccfd4e8ef21" />
+<img width="2844" height="849" alt="image" src="https://github.com/user-attachments/assets/4460b181-0ae1-4573-b833-e7d4eb1b5ec4" />
 
 <br>
 

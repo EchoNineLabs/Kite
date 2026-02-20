@@ -16,7 +16,7 @@ context(context: ScriptContext)
 fun AsyncScheduler.runNow(task: () -> Unit): ScheduledTask {
     // Wrapping ScheduledTask as KiteScheduledTask in order to expose the overridden cancel() method.
     // While this technically does not make any effect on 'runNow' - we should still use the wrapper for consistency with other extensions.
-    val kiteTask = KiteScheduledTask(context, this.runNow(Kite.instance!!) { task() })
+    val kiteTask = KiteScheduledTask(context, this.runNow(Kite.INSTANCE!!) { task() })
     // Run now tasks are not tracked in ScriptContext as they execute immediately.
     return kiteTask
 }
@@ -39,7 +39,7 @@ fun AsyncScheduler.runDelayed(
     // Wrapping ScheduledTask as KiteScheduledTask in order to expose the overridden cancel() method.
     kiteTask = KiteScheduledTask(
         context, this.runDelayed(
-            Kite.instance!!,
+            Kite.INSTANCE!!,
             {
                 task(kiteTask)
                 // Remove the task from the context's list after execution.
@@ -73,7 +73,7 @@ fun AsyncScheduler.runAtFixedRate(
     // Wrapping ScheduledTask as KiteScheduledTask in order to expose the overridden cancel() method.
     kiteTask = KiteScheduledTask(
         context, this.runAtFixedRate(
-            Kite.instance!!,
+            Kite.INSTANCE!!,
             { task(kiteTask) },
             initialDelay,
             period,

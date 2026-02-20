@@ -6,7 +6,7 @@ import dev.echonine.kite.Kite
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-typealias DependencyTree = MutableMap<String, List<String>>
+typealias DependencyTree = MutableMap<String, MutableSet<String>>
 
 class ImportsCache {
     private val mutex = Mutex()
@@ -26,12 +26,23 @@ class ImportsCache {
         cache = file.bufferedReader().use { gson.fromJson(it, typeToken) } ?: mutableMapOf()
     }
 
-    suspend fun write(name: String, dependencies: List<String>) = mutex.withLock {
+    suspend fun invalidate(name: String) = mutex.withLock {
+        cache.remove(name)
+        // Saving contents to the file.
+        this.save()
+    }
+
+    suspend fun append(name: String, dependencies: Collection<String>) = mutex.withLock {
+        // Putting list of dependencies / imports in the map.
+        cache.computeIfAbsent(name) { mutableSetOf() }.addAll(dependencies)
+        // Saving contents to the file.
+        this.save()
+    }
+
+    private fun save() {
         // Creating parent directories and file in case it does not exist.
         file.parentFile.mkdirs()
         file.createNewFile()
-        // Putting list of dependencies / imports to the map.
-        cache[name] = dependencies
         // Saving contents to the file.
         file.bufferedWriter().use {
             try {

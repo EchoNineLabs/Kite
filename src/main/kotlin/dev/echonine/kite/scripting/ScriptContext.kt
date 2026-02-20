@@ -54,7 +54,7 @@ class ScriptContext(
         eventListeners.clear()
 
         // Unregister commands
-        val commandMap = Kite.instance?.server?.commandMap
+        val commandMap = Kite.INSTANCE?.server?.commandMap
         commands.forEach { command ->
             command.unregister(commandMap!!)
             commandMap.knownCommands.remove(command.name)
@@ -62,11 +62,11 @@ class ScriptContext(
                 commandMap.knownCommands.remove(alias)
             }
         }
-        Kite.instance?.server?.syncCommands()
+        Kite.INSTANCE?.server?.syncCommands()
         commands.clear()
 
         // Cancel scheduled bukkit tasks
-        val scheduler = Kite.instance?.server?.scheduler
+        val scheduler = Kite.INSTANCE?.server?.scheduler
         bukkitTasks.forEach { taskId ->
             scheduler?.cancelTask(taskId)
         }
@@ -86,11 +86,11 @@ class ScriptContext(
         noinline handler: (T) -> Unit
     ) {
         val listener = object : Listener {}
-        Kite.instance?.server?.pluginManager?.registerEvent(T::class.java, listener, priority, { _, event ->
+        Kite.INSTANCE?.server?.pluginManager?.registerEvent(T::class.java, listener, priority, { _, event ->
             if (event is T) {
                 handler(event)
             }
-        }, Kite.instance!!)
+        }, Kite.INSTANCE!!)
         this.eventListeners.add(listener)
     }
 
@@ -98,8 +98,8 @@ class ScriptContext(
         val cmdData = CommandBuilder(name).apply(builder)
         val cmd = KiteScriptCommand(cmdData)
         commands.add(cmd)
-        Kite.instance?.server?.commandMap?.register(cmd.namespace, cmd)
-        Kite.instance?.server?.syncCommands()
+        Kite.INSTANCE?.server?.commandMap?.register(cmd.namespace, cmd)
+        Kite.INSTANCE?.server?.syncCommands()
     }
 
 }

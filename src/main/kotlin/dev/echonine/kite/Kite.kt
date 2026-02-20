@@ -2,6 +2,7 @@ package dev.echonine.kite
 
 import dev.echonine.kite.commands.KiteCommands
 import dev.echonine.kite.scripting.ScriptManager
+import dev.echonine.kite.scripting.cache.ImportsCache
 import dev.faststats.bukkit.BukkitMetrics
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
@@ -14,15 +15,17 @@ class Kite : JavaPlugin() {
     internal lateinit var fastStats: dev.faststats.core.Metrics
 
     companion object {
-        var instance: Kite? = null
+        var INSTANCE: Kite? = null
             private set
+        // Global instance of ImportsCache for ease of access.
+        var CACHE: ImportsCache? = null
     }
 
     object Structure {
         // This property includes a fallback to not throw in case it was accessed in non-server environment.
         // E.g., when Kite's running inside IDEA.
         val KITE_DIR: File
-            get() = instance?.dataFolder ?: File(System.getProperty("user.dir"))
+            get() = INSTANCE?.dataFolder ?: File(System.getProperty("user.dir"))
         val SCRIPTS_DIR: File
             get() = KITE_DIR.resolve("scripts")
         val CACHE_DIR: File
@@ -42,7 +45,9 @@ class Kite : JavaPlugin() {
     }
 
     override fun onEnable() {
-        instance = this
+        INSTANCE = this
+        // Initializing ImportsCache.
+        CACHE = ImportsCache()
         // Initializing ScriptManager and loading all scripts.
         this.scriptManager = ScriptManager(this)
         this.scriptManager.loadAll()

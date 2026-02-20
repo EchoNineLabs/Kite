@@ -37,7 +37,7 @@ private fun makeBukkitRunnable(task: (BukkitRunnable) -> Unit, isRepeating: Bool
 context(context: ScriptContext)
 fun BukkitScheduler.runTask(delayTicks: Long = 0, task: (BukkitRunnable) -> Unit): BukkitTask {
     val runnableTask = makeBukkitRunnable(task, isRepeating = false)
-    return runnableTask.runTaskLater(Kite.instance!!, delayTicks).also {
+    return runnableTask.runTaskLater(Kite.INSTANCE!!, delayTicks).also {
         context.bukkitTasks.add(it.taskId)
     }
 }
@@ -48,7 +48,7 @@ fun BukkitScheduler.runTask(delayTicks: Long = 0, task: (BukkitRunnable) -> Unit
 context(context: ScriptContext)
 fun BukkitScheduler.runTaskAsync(delayTicks: Long = 0, task: (BukkitRunnable) -> Unit): BukkitTask {
     val runnableTask = makeBukkitRunnable(task, isRepeating = false)
-    return runnableTask.runTaskLaterAsynchronously(Kite.instance!!, delayTicks).also {
+    return runnableTask.runTaskLaterAsynchronously(Kite.INSTANCE!!, delayTicks).also {
         context.bukkitTasks.add(it.taskId)
     }
 }
@@ -63,7 +63,7 @@ fun BukkitScheduler.runTaskTimer(
     task: (BukkitRunnable) -> Unit
 ): BukkitTask {
     val runnableTask = makeBukkitRunnable(task, isRepeating = true)
-    return runnableTask.runTaskTimer(Kite.instance!!, delayTicks, periodTicks).also {
+    return runnableTask.runTaskTimer(Kite.INSTANCE!!, delayTicks, periodTicks).also {
         context.bukkitTasks.add(it.taskId)
     }
 }
@@ -78,7 +78,7 @@ fun BukkitScheduler.runTaskTimerAsync(
     task: (BukkitRunnable) -> Unit
 ): BukkitTask {
     val runnableTask = makeBukkitRunnable(task, isRepeating = true)
-    return runnableTask.runTaskTimerAsynchronously(Kite.instance!!, delayTicks, periodTicks).also {
+    return runnableTask.runTaskTimerAsynchronously(Kite.INSTANCE!!, delayTicks, periodTicks).also {
         context.bukkitTasks.add(it.taskId)
     }
 }

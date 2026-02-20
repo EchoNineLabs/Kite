@@ -31,7 +31,7 @@ import kotlin.script.experimental.jvmhost.CompiledScriptJarsCache
 val updatedClasspath by lazy {
     val classpath = mutableListOf<File>()
     // Resolves all plugins' classpaths to make the compiler recognize APIs of external plugins.
-    Kite.instance?.server?.pluginManager?.plugins?.flatMap {
+    Kite.INSTANCE?.server?.pluginManager?.plugins?.flatMap {
         classpathFromClassloader(it.javaClass.classLoader) ?: emptyList()
     }?.let { pluginClasspath ->
         classpath.addAll(pluginClasspath)
@@ -133,13 +133,8 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 }
                 // Collecting other .kite.kts files referenced via @Import.
                 is Import -> {
-                    (context.script as? FileBasedScriptSource)?.file?.takeUnless(ScriptHolder::isEntryPoint)?.also {
-                        val location = it.absoluteFile.toRelativeString(Kite.Structure.SCRIPTS_DIR.absoluteFile)
-                        Kite.instance?.logger?.warning("[$location] Found @Import annotation inside an already imported script.")
-                        Kite.instance?.logger?.warning("[$location] This import cannot be reliably tracked by imports cache, therefore, changes made to imported file may not trigger re-compilation.")
-                    }
                     annotation.paths.forEach { path ->
-                        importedSources += FileScriptSource(scriptBaseDir?.resolve(path) ?: File(path))
+                        importedSources += FileScriptSource(scriptBaseDir?.resolve(path)?.canonicalFile ?: File(path))
                     }
                 }
             }}
@@ -161,17 +156,13 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
         beforeCompiling { context ->
             return@beforeCompiling ScriptCompilationConfiguration(context.compilationConfiguration) {
                 val name = context.compilationConfiguration[ScriptCompilationConfiguration.displayName]!!
-                // Skipping imports cache writes by scripts that are not entry scripts.
-                // This is a safety net for all sorts of issues coming from child scripts @Import-ing other scripts.
-                if (!ScriptHolder.isEntryPoint((context.script as? FileBasedScriptSource)!!.file))
-                    return@ScriptCompilationConfiguration
                 // Getting all imported scripts added to the configuration via annotation processor.
                 val imports = context.compilationConfiguration[ScriptCompilationConfiguration.importScripts]
                 // Appending to the imports cache. Must be launched in a coroutine since ImportsCache#write is a suspend function backed by Mutex.
                 runBlocking {
                     // Writing non-empty imported script paths to the imports cache.
                     imports?.mapNotNull { (it as? FileScriptSource)?.file?.path }?.also {
-                        importsCache.write(name, it)
+                        importsCache.append(name, it)
                     }
                 }
             }.asSuccess()

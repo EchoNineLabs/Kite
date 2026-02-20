@@ -145,6 +145,9 @@ internal class ScriptManager(val plugin: Kite) {
                 "server" to plugin.server
             ))
         }
+        // Invalidating imports cache of the script before compilation.
+        // It will then be populated with new entries by KiteCompilationConfiguration.
+        Kite.CACHE?.invalidate(holder.name)
         // Compiling/loading the script. Time the operation to verify cache performance.
         val (compiledScript, elapsedTime) = measureTimedValue {
             scriptingHost.eval(holder.entryPoint.toScriptSource(), compilationConfiguration, evaluationConfiguration)

@@ -15,7 +15,7 @@ fun GlobalRegionScheduler.run(task: (KiteScheduledTask) -> Unit): KiteScheduledT
     lateinit var kiteTask: KiteScheduledTask
     // Wrapping ScheduledTask as KiteScheduledTask in order to expose the overridden cancel() method.
     // While this technically does not make any effect on 'run' - we should still use the wrapper for consistency with other extensions.
-    kiteTask = KiteScheduledTask(context, this.run(Kite.instance!!) { task(kiteTask) })
+    kiteTask = KiteScheduledTask(context, this.run(Kite.INSTANCE!!) { task(kiteTask) })
     // Run now tasks are not tracked in ScriptContext as they execute immediately.
     return kiteTask
 }
@@ -34,7 +34,7 @@ fun GlobalRegionScheduler.runDelayed(
     lateinit var kiteTask: KiteScheduledTask
     // Wrapping ScheduledTask as KiteScheduledTask in order to expose the overridden cancel() method.
     kiteTask = KiteScheduledTask(context, this.runDelayed(
-        Kite.instance!!,
+        Kite.INSTANCE!!,
         {
             task(kiteTask)
             // Remove the task from the context's list after execution.
@@ -62,7 +62,7 @@ fun GlobalRegionScheduler.runAtFixedRate(
     lateinit var kiteTask: KiteScheduledTask
     // Wrapping ScheduledTask as KiteScheduledTask in order to expose the overridden cancel() method.
     kiteTask = KiteScheduledTask(context, this.runAtFixedRate(
-        Kite.instance!!,
+        Kite.INSTANCE!!,
         { task(kiteTask) },
         initialDelayTicks,
         periodTicks

@@ -8,7 +8,6 @@ import dev.echonine.kite.api.annotations.Repository
 import dev.echonine.kite.scripting.configuration.compat.DynamicServerJarCompat
 import dev.echonine.kite.scripting.Script
 import dev.echonine.kite.scripting.ScriptContext
-import dev.echonine.kite.scripting.ScriptHolder
 import dev.echonine.kite.scripting.cache.ImportsCache
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -17,6 +16,7 @@ import org.bukkit.Server
 import org.bukkit.plugin.java.JavaPlugin
 import revxrsal.zapper.DependencyManager
 import revxrsal.zapper.classloader.URLClassLoaderWrapper
+import revxrsal.zapper.transitive.TransitiveResolver
 import java.io.File
 import java.net.URLClassLoader
 import java.security.MessageDigest
@@ -103,26 +103,39 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 ?: return@onAnnotations context.compilationConfiguration.asSuccess()
             val scriptBaseDir = (context.script as? FileBasedScriptSource)?.file?.parentFile
             val importedSources: MutableList<FileScriptSource> = mutableListOf()
-            // We don't want to share the instance of DependencyManager between scripts / compiler runs as it can easily store up on stale repositories and dependencies.
-            val dependencyManager = DependencyManager(Kite.Structure.LIBS_DIR, URLClassLoaderWrapper.wrap(Kite::class.java.classLoader as URLClassLoader))
             // List of dependencies; for later use when appending them to the compilation config.
             val scriptDependencies: MutableList<String> = mutableListOf()
+            // Collecting repositories. This must be done before anything else so that they can be added to DependencyManager and TransitiveResolver.
+            val repositories = annotations.filterIsInstance<Repository>().map { it.repository }.distinct().map { revxrsal.zapper.repository.Repository.maven(it) }
+            // We don't want to share the instance of DependencyManager between scripts / compiler runs as it can easily store up on stale repositories and dependencies.
+            val dependencyManager = DependencyManager(Kite.Structure.LIBS_DIR, URLClassLoaderWrapper.wrap(Kite::class.java.classLoader as URLClassLoader)).apply {
+                repositories.forEach { repository(it) }
+            }
+            // Transitive resolver for getting / resolving dependencies of @Dependency(-ies).
+            val transitiveResolver = TransitiveResolver.builder().repositories(repositories).build()
             // Parsing script annotations.
             annotations.forEach { annotation -> when (annotation) {
-                // Adding repositories declared via @Repository.
-                is Repository -> {
-                    dependencyManager.repository(revxrsal.zapper.repository.Repository.maven(annotation.repository))
-                }
                 // Adding dependencies declared via @Dependency.
                 is Dependency -> {
                     if (annotation.dependency.count { it == ':' } in 2 .. 3) {
-                        dependencyManager.dependency(annotation.dependency)
                         // Deconstructing Maven coordinates to variables for ease of use.
                         val (group, artifact, version) = annotation.dependency.split(":")
+                        // Creating instance of Zapper's Dependency.
+                        val dependency = revxrsal.zapper.Dependency(group, artifact, version)
+                        // Adding this dependency to the DependencyManager.
+                        dependencyManager.dependency(annotation.dependency)
                         // Adding to the list of script dependencies for later use.
                         scriptDependencies.add("$group.$artifact-$version.jar")
                         // No easy way to figure out what has and what has been not been relocated, so we have to add both and then filter based on which file exists and which one doesn't.
                         scriptDependencies.add("$group.$artifact-$version-relocated.jar")
+                        // Adding resolved dependencies to the DependencyManager.
+                        for (resolvedDependency in transitiveResolver.resolve(dependency)) {
+                            dependencyManager.dependency(resolvedDependency)
+                            // Adding to the list of script dependencies for later use.
+                            scriptDependencies.add("${resolvedDependency.groupId}.${resolvedDependency.artifactId}-${resolvedDependency.version}.jar")
+                            // No easy way to figure out what has and what has been not been relocated, so we have to add both and then filter based on which file exists and which one doesn't.
+                            scriptDependencies.add("${resolvedDependency.groupId}.${resolvedDependency.artifactId}-${resolvedDependency.version}-relocated.jar")
+                        }
                     } else if (annotation.dependency.endsWith(".jar")) {
                         scriptDependencies.add(annotation.dependency)
                     }

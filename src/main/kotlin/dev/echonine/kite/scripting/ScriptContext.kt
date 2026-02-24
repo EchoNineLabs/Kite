@@ -35,7 +35,13 @@ class ScriptContext(
     }
 
     fun runOnLoad() {
+        // Calling all onLoad callbacks.
         onLoadCBs.forEach { it() }
+        // Registering commands and syncing them for all online players.
+        commands.forEach { command ->
+            Kite.INSTANCE?.server?.commandMap?.register(command.namespace, command)
+        }
+        Kite.INSTANCE?.server?.syncCommands()
     }
 
     fun onUnload(cb: () -> Unit) {
@@ -98,8 +104,6 @@ class ScriptContext(
         val cmdData = CommandBuilder(name).apply(builder)
         val cmd = KiteScriptCommand(cmdData)
         commands.add(cmd)
-        Kite.INSTANCE?.server?.commandMap?.register(cmd.namespace, cmd)
-        Kite.INSTANCE?.server?.syncCommands()
     }
 
 }

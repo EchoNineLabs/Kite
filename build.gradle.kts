@@ -30,6 +30,7 @@ dependencies {
     // Runtime Dependencies
     paperLibrary("io.github.revxrsal:zapper.api:1.0.3")
     paperLibrary("dev.faststats.metrics:bukkit:0.16.0")
+    paperLibrary("org.jsoup:jsoup:1.22.1")
     // Kotlin Scripting Libraries
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm")
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm-host")

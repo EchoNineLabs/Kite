@@ -9,6 +9,7 @@ import dev.echonine.kite.scripting.configuration.compat.DynamicServerJarCompat
 import dev.echonine.kite.scripting.Script
 import dev.echonine.kite.scripting.ScriptContext
 import dev.echonine.kite.scripting.cache.ImportsCache
+import dev.echonine.kite.scripting.maven.TransitiveResolver
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -16,7 +17,6 @@ import org.bukkit.Server
 import org.bukkit.plugin.java.JavaPlugin
 import revxrsal.zapper.DependencyManager
 import revxrsal.zapper.classloader.URLClassLoaderWrapper
-import revxrsal.zapper.transitive.TransitiveResolver
 import java.io.File
 import java.net.URLClassLoader
 import java.security.MessageDigest
@@ -111,8 +111,6 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
             val dependencyManager = DependencyManager(Kite.Structure.LIBS_DIR, URLClassLoaderWrapper.wrap(Kite::class.java.classLoader as URLClassLoader)).apply {
                 repositories.forEach { repository(it) }
             }
-            // Transitive resolver for getting / resolving dependencies of @Dependency(-ies).
-            val transitiveResolver = TransitiveResolver.builder().repositories(repositories).build()
             // Parsing script annotations.
             annotations.forEach { annotation -> when (annotation) {
                 // Adding dependencies declared via @Dependency.
@@ -129,7 +127,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                         // No easy way to figure out what has and what has been not been relocated, so we have to add both and then filter based on which file exists and which one doesn't.
                         scriptDependencies.add("$group.$artifact-$version-relocated.jar")
                         // Adding resolved dependencies to the DependencyManager.
-                        for (resolvedDependency in transitiveResolver.resolve(dependency)) {
+                        for (resolvedDependency in TransitiveResolver(repositories, true).resolve(dependency)) {
                             dependencyManager.dependency(resolvedDependency)
                             // Adding to the list of script dependencies for later use.
                             scriptDependencies.add("${resolvedDependency.groupId}.${resolvedDependency.artifactId}-${resolvedDependency.version}.jar")
@@ -156,6 +154,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 // This can be a side effect of parallel compilation.
                 runBlocking {
                     zapperMutex.withLock {
+                        // This can technically throw DependencyDownloadException if dependency is not found.
                         dependencyManager.load()
                     }
                 }

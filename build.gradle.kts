@@ -15,8 +15,15 @@ plugins {
 
 private val VERSION = "1.2.4"
 private val RUN_NUMBER = System.getenv("GITHUB_RUN_NUMBER") ?: "DEV"
+private val BUNDLE_KOTLIN_STD = if (System.getenv("BUNDLE_KOTLIN_STD") == null) {
+    true
+} else {
+    System.getenv("BUNDLE_KOTLIN_STD").toBoolean()
+}
+
+println(BUNDLE_KOTLIN_STD)
 group = "dev.echonine.kite"
-version = "$VERSION+$RUN_NUMBER"
+version = "$VERSION+$RUN_NUMBER" + if (!BUNDLE_KOTLIN_STD) "-NoSTD" else ""
 
 repositories {
     mavenCentral()
@@ -26,7 +33,11 @@ repositories {
 
 dependencies {
     // Kotlin Standard Library
-    paperLibrary(kotlin("stdlib"))
+    if (BUNDLE_KOTLIN_STD) {
+        paperLibrary(kotlin("stdlib"))
+    } else {
+        compileOnly(kotlin("stdlib"))
+    }
     // Runtime Dependencies
     paperLibrary("io.github.revxrsal:zapper.api:1.0.3")
     paperLibrary("dev.faststats.metrics:bukkit:0.16.0")
@@ -51,6 +62,13 @@ paper {
     description = "A lightweight Kotlin scripting plugin"
     website = "https://echonine.dev/kite/"
     authors = listOf("Saturn745", "Grabsky")
+    if (!BUNDLE_KOTLIN_STD) {
+        serverDependencies {
+            register("MCKotlin-Paper") {
+                required = true
+            }
+        }
+    }
 }
 
 runPaper.folia.registerTask()

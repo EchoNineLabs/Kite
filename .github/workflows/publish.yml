@@ -65,8 +65,8 @@ jobs:
                 line_count++
                 if (line_count == 1) { hash = $0 }
                 else if (line_count == 2) { shorthash = $0 }
-                else if (line_count == 3) { subject = $0 }
-                else if ($0 != "") { body = body "  " $0 "\n" }
+                else if (line_count == 3) { gsub(/ <[^>]*@[^>]*>/, "", $0); subject = $0 }
+                else if ($0 != "") { gsub(/ <[^>]*@[^>]*>/, "", $0); body = body "  " $0 "\n" }
               }
             '
           }
@@ -126,6 +126,17 @@ jobs:
           HANGAR_TOKEN: ${{ secrets.HANGAR_TOKEN }}
           CHANGELOG: ${{ env.CHANGELOG }}
 
+      - name: Build NoSTD variant
+        run: ./gradlew build
+        env:
+          BUNDLE_KOTLIN_STD: "false"
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kite
+          path: build/libs/
+
       - name: Send Discord Notification
         run: |
           echo "Fetching latest version info from Modrinth and Hangar..."
@@ -144,26 +155,34 @@ jobs:
           echo "Modrinth version: $MODRINTH_VERSION_NAME ($MODRINTH_VERSION_ID)"
           echo "Hangar version: $HANGAR_VERSION_NAME"
 
-          # Format Discord message with proper JSON escaping
-          DISCORD_CONTENT="**New Kite Release: $MODRINTH_VERSION_NAME**
-
-          **Changelog:**
-          $CHANGELOG
-
-          **Download Links:**
-          • [Modrinth](<$MODRINTH_LINK>)
-          • [Hangar](<$HANGAR_LINK>)"
-
-          # Create JSON payload with jq to properly escape everything
+          # Create Components V2 payload
           PAYLOAD=$(jq -n \
-            --arg content "$DISCORD_CONTENT" \
-            '{content: $content}')
+            --arg title "## New Kite Release: $MODRINTH_VERSION_NAME" \
+            --arg changelog "$CHANGELOG" \
+            --arg modrinth_url "$MODRINTH_LINK" \
+            --arg hangar_url "$HANGAR_LINK" \
+            '{
+              flags: 32768,
+              components: [{
+                type: 17,
+                accent_color: 9133302,
+                components: [
+                  { type: 10, content: ($title + "\n\n" + $changelog) },
+                  { type: 14 },
+                  { type: 1, components: [
+                    { type: 2, style: 5, label: "Modrinth", url: $modrinth_url },
+                    { type: 2, style: 5, label: "Hangar", url: $hangar_url }
+                  ]}
+                ]
+              }]
+            }')
 
           # Send to Discord webhook
           curl -H "Content-Type: application/json" \
             -d "$PAYLOAD" \
-            "$DISCORD_WEBHOOK_URL"
+            "$DISCORD_WEBHOOK_URL?with_components=true"
 
           echo "Discord notification sent!"
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          CHANGELOG: ${{ env.CHANGELOG }}

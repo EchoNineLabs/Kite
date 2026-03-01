@@ -1,5 +1,7 @@
 package dev.echonine.kite.scripting.configuration
 
+import com.alessiodp.libby.BukkitLibraryManager
+import com.alessiodp.libby.Library
 import dev.echonine.kite.Kite
 import dev.echonine.kite.api.annotations.Dependency
 import dev.echonine.kite.api.annotations.Import
@@ -8,17 +10,15 @@ import dev.echonine.kite.api.annotations.Repository
 import dev.echonine.kite.scripting.configuration.compat.DynamicServerJarCompat
 import dev.echonine.kite.scripting.Script
 import dev.echonine.kite.scripting.ScriptContext
-import dev.echonine.kite.scripting.ScriptHolder
 import dev.echonine.kite.scripting.cache.ImportsCache
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.bukkit.Server
+import org.bukkit.plugin.Plugin
 import org.bukkit.plugin.java.JavaPlugin
-import revxrsal.zapper.DependencyManager
-import revxrsal.zapper.classloader.URLClassLoaderWrapper
 import java.io.File
-import java.net.URLClassLoader
+import java.nio.file.Path
 import java.security.MessageDigest
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.FileBasedScriptSource
@@ -53,7 +53,21 @@ val importsCache = ImportsCache()
 // This can be a side effect of parallel compilation.
 val zapperMutex = Mutex()
 
+val libraryManager by lazy {
+    KiteLibraryManager(Kite.INSTANCE!!)
+}
+
 // var hasCompilationOccurred = false
+
+class KiteLibraryManager(plugin: Plugin) : BukkitLibraryManager(plugin, "libs") {
+    val resolvedPaths: Set<File> = mutableSetOf()
+
+    override fun addToClasspath(file: Path) {
+        (resolvedPaths as MutableSet).add(file.toFile())
+        super.addToClasspath(file)
+    }
+
+}
 
 @Suppress("JavaIoSerializableObjectMustHaveReadResolve")
 object KiteCompilationConfiguration : ScriptCompilationConfiguration({
@@ -104,33 +118,32 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
             val scriptBaseDir = (context.script as? FileBasedScriptSource)?.file?.parentFile
             val importedSources: MutableList<FileScriptSource> = mutableListOf()
             // We don't want to share the instance of DependencyManager between scripts / compiler runs as it can easily store up on stale repositories and dependencies.
-            val dependencyManager = DependencyManager(Kite.Structure.LIBS_DIR, URLClassLoaderWrapper.wrap(Kite::class.java.classLoader as URLClassLoader))
+            // val dependencyManager = DependencyManager(Kite.Structure.LIBS_DIR, URLClassLoaderWrapper.wrap(Kite::class.java.classLoader as URLClassLoader)
             // List of dependencies; for later use when appending them to the compilation config.
             val scriptDependencies: MutableList<String> = mutableListOf()
+            // ...
+            val aRepositories = annotations.filterIsInstance<Repository>().map { it.repository }
+            val aDependencies = annotations.filterIsInstance<Dependency>().map { it.dependency }
+            val aRelocations = annotations.filterIsInstance<Relocation>().map { it.pattern to it.newPattern }
+            // ...
+            val libraries = aDependencies.map { dependency ->
+                return@map Library.builder()
+                    .resolveTransitiveDependencies(true)
+                    .apply {
+                        // Adding all declared repositories.
+                        aRepositories.forEach(this::repository)
+                        // Adding all declared relocation patterns.
+                        aRelocations.forEach { (pattern, newPattern) -> this.relocate(pattern, newPattern) }
+                        // Adding this dependency.
+                        dependency.split(":").also { (group, artifact, version) ->
+                            this.groupId(group).artifactId(artifact).version(version)
+                        }
+                    }
+                    .build()
+            }
+
             // Parsing script annotations.
             annotations.forEach { annotation -> when (annotation) {
-                // Adding repositories declared via @Repository.
-                is Repository -> {
-                    dependencyManager.repository(revxrsal.zapper.repository.Repository.maven(annotation.repository))
-                }
-                // Adding dependencies declared via @Dependency.
-                is Dependency -> {
-                    if (annotation.dependency.count { it == ':' } in 2 .. 3) {
-                        dependencyManager.dependency(annotation.dependency)
-                        // Deconstructing Maven coordinates to variables for ease of use.
-                        val (group, artifact, version) = annotation.dependency.split(":")
-                        // Adding to the list of script dependencies for later use.
-                        scriptDependencies.add("$group.$artifact-$version.jar")
-                        // No easy way to figure out what has and what has been not been relocated, so we have to add both and then filter based on which file exists and which one doesn't.
-                        scriptDependencies.add("$group.$artifact-$version-relocated.jar")
-                    } else if (annotation.dependency.endsWith(".jar")) {
-                        scriptDependencies.add(annotation.dependency)
-                    }
-                }
-                // Configuring relocations specified via @Relocation.
-                is Relocation -> {
-                    dependencyManager.relocate(revxrsal.zapper.relocation.Relocation(annotation.pattern, annotation.newPattern))
-                }
                 // Collecting other .kite.kts files referenced via @Import.
                 is Import -> {
                     annotation.paths.forEach { path ->
@@ -143,7 +156,10 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 // This can be a side effect of parallel compilation.
                 runBlocking {
                     zapperMutex.withLock {
-                        dependencyManager.load()
+                        libraries.forEach {
+                            libraryManager.loadLibrary(it)
+                        }
+                        dependencies.append(JvmDependency(libraryManager.resolvedPaths.toList()))
                     }
                 }
                 // Adding downloaded libraries as dependencies.

@@ -20,15 +20,16 @@ version = "$VERSION+$RUN_NUMBER"
 
 repositories {
     mavenCentral()
-    maven { name = "PaperMC"; url = uri("https://repo.papermc.io/repository/maven-public/") }
-    maven { name = "TheNextLvl"; url = uri("https://repo.thenextlvl.net/releases") }
+    maven { name = "alessiodp-snapshots"; url = uri("https://repo.alessiodp.com/snapshots") }
+    maven { name = "papermc"; url = uri("https://repo.papermc.io/repository/maven-public/") }
+    maven { name = "thenextlvl"; url = uri("https://repo.thenextlvl.net/releases") }
 }
 
 dependencies {
     // Kotlin Standard Library
     paperLibrary(kotlin("stdlib"))
     // Runtime Dependencies
-    paperLibrary("io.github.revxrsal:zapper.api:1.0.3")
+    paperLibrary("com.alessiodp.libby:libby-bukkit:2.0.0-SNAPSHOT")
     paperLibrary("dev.faststats.metrics:bukkit:0.16.0")
     // Kotlin Scripting Libraries
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm")

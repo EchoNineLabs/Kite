@@ -30,6 +30,8 @@ class Kite : JavaPlugin() {
             get() = KITE_DIR.resolve("scripts")
         val CACHE_DIR: File
             get() = KITE_DIR.resolve("cache")
+        val DEPS_DIR: File
+            get() = KITE_DIR.resolve("dependencies")
         val LIBS_DIR: File
             get() = KITE_DIR.resolve("libs")
     }

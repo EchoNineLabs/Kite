@@ -36,6 +36,13 @@ val updatedClasspath by lazy {
     }?.let { pluginClasspath ->
         classpath.addAll(pluginClasspath)
     }
+
+    // Resolve all local libraries' classpaths.
+    Kite.Structure.LIBS_DIR.mkdirs()
+    Kite.Structure.LIBS_DIR
+        .listFiles { it.name.endsWith(".jar") }
+        ?.let { classpath.addAll(it) }
+
     // Checking if dynamic server JAR compatibility mode is enabled.
     if (DynamicServerJarCompat.isEnabled()) {
         // Finding the Paper API JAR using and adding to the classpath.
@@ -104,7 +111,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
             val scriptBaseDir = (context.script as? FileBasedScriptSource)?.file?.parentFile
             val importedSources: MutableList<FileScriptSource> = mutableListOf()
             // We don't want to share the instance of DependencyManager between scripts / compiler runs as it can easily store up on stale repositories and dependencies.
-            val dependencyManager = DependencyManager(Kite.Structure.LIBS_DIR, URLClassLoaderWrapper.wrap(Kite::class.java.classLoader as URLClassLoader))
+            val dependencyManager = DependencyManager(Kite.Structure.DEPS_DIR, URLClassLoaderWrapper.wrap(Kite::class.java.classLoader as URLClassLoader))
             // List of dependencies; for later use when appending them to the compilation config.
             val scriptDependencies: MutableList<String> = mutableListOf()
             // Parsing script annotations.
@@ -147,7 +154,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                     }
                 }
                 // Adding downloaded libraries as dependencies.
-                dependencies.append(JvmDependency(scriptDependencies.map { File(Kite.Structure.LIBS_DIR, it) }.filter { it.exists() }))
+                dependencies.append(JvmDependency(scriptDependencies.map { File(Kite.Structure.DEPS_DIR, it) }.filter { it.exists() }))
                 // Appending imported sources to the script.
                 importedSources.takeUnless { it.isEmpty() }?.let { importScripts.append(it) }
             }.asSuccess()

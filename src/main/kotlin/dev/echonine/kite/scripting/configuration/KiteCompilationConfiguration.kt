@@ -1,6 +1,5 @@
 package dev.echonine.kite.scripting.configuration
 
-import com.alessiodp.libby.BukkitLibraryManager
 import com.alessiodp.libby.Library
 import dev.echonine.kite.Kite
 import dev.echonine.kite.api.annotations.Dependency
@@ -11,14 +10,13 @@ import dev.echonine.kite.scripting.configuration.compat.DynamicServerJarCompat
 import dev.echonine.kite.scripting.Script
 import dev.echonine.kite.scripting.ScriptContext
 import dev.echonine.kite.scripting.cache.ImportsCache
+import dev.echonine.kite.scripting.libraries.KiteLibraryManager
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.bukkit.Server
-import org.bukkit.plugin.Plugin
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
-import java.nio.file.Path
 import java.security.MessageDigest
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.FileBasedScriptSource
@@ -51,23 +49,9 @@ val importsCache = ImportsCache()
 
 // Mutex *should* potentially solve concurrency issues when two scripts are set to load the *same* dependency at once.
 // This can be a side effect of parallel compilation.
-val zapperMutex = Mutex()
-
-val libraryManager by lazy {
-    KiteLibraryManager(Kite.INSTANCE!!)
-}
+val libbyMutex = Mutex()
 
 // var hasCompilationOccurred = false
-
-class KiteLibraryManager(plugin: Plugin) : BukkitLibraryManager(plugin, "libs") {
-    val resolvedPaths: Set<File> = mutableSetOf()
-
-    override fun addToClasspath(file: Path) {
-        (resolvedPaths as MutableSet).add(file.toFile())
-        super.addToClasspath(file)
-    }
-
-}
 
 @Suppress("JavaIoSerializableObjectMustHaveReadResolve")
 object KiteCompilationConfiguration : ScriptCompilationConfiguration({
@@ -117,49 +101,51 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 ?: return@onAnnotations context.compilationConfiguration.asSuccess()
             val scriptBaseDir = (context.script as? FileBasedScriptSource)?.file?.parentFile
             val importedSources: MutableList<FileScriptSource> = mutableListOf()
-            // We don't want to share the instance of DependencyManager between scripts / compiler runs as it can easily store up on stale repositories and dependencies.
-            // val dependencyManager = DependencyManager(Kite.Structure.LIBS_DIR, URLClassLoaderWrapper.wrap(Kite::class.java.classLoader as URLClassLoader)
             // List of dependencies; for later use when appending them to the compilation config.
             val scriptDependencies: MutableList<String> = mutableListOf()
-            // ...
-            val aRepositories = annotations.filterIsInstance<Repository>().map { it.repository }
-            val aDependencies = annotations.filterIsInstance<Dependency>().map { it.dependency }
-            val aRelocations = annotations.filterIsInstance<Relocation>().map { it.pattern to it.newPattern }
-            // ...
-            val libraries = aDependencies.map { dependency ->
+            // We don't want to share the instance of DependencyManager between scripts / compiler runs as it can easily store up on stale repositories and dependencies.
+            val libraryManager = KiteLibraryManager()
+            // Adding all declared repositories to the (Kite)LibraryManager instance.
+            annotations.filterIsInstance<Repository>().map { it.repository }.forEach(libraryManager::addRepository)
+            // Getting declared @Dependency and @Relocation annotations.
+            val aDependencies = annotations.filterIsInstance<Dependency>()
+            val aRelocations = annotations.filterIsInstance<Relocation>()
+            // Mapping declared (local) dependencies to File instances.
+            val localLibraries = aDependencies.filter { it.dependency.endsWith(".jar") }.map { Kite.Structure.LIBS_DIR.resolve(it.dependency) }.filter { it.exists() }
+            // Mapping declared (remote) dependencies to Library instances.
+            val remoteLibraries = aDependencies.filter { !it.dependency.endsWith(".jar") }.map { aDependency ->
                 return@map Library.builder()
+                    // We may want to make this opt-out in the future.
                     .resolveTransitiveDependencies(true)
                     .apply {
-                        // Adding all declared repositories.
-                        aRepositories.forEach(this::repository)
                         // Adding all declared relocation patterns.
-                        aRelocations.forEach { (pattern, newPattern) -> this.relocate(pattern, newPattern) }
-                        // Adding this dependency.
-                        dependency.split(":").also { (group, artifact, version) ->
+                        aRelocations.forEach { this.relocate(it.pattern, it.newPattern) }
+                        // Adding a remote dependency.
+                        aDependency.dependency.split(":").also { (group, artifact, version) ->
                             this.groupId(group).artifactId(artifact).version(version)
                         }
                     }
                     .build()
             }
-
-            // Parsing script annotations.
-            annotations.forEach { annotation -> when (annotation) {
-                // Collecting other .kite.kts files referenced via @Import.
-                is Import -> {
-                    annotation.paths.forEach { path ->
-                        importedSources += FileScriptSource(scriptBaseDir?.resolve(path)?.canonicalFile ?: File(path))
-                    }
+            // Collecting other .kite.kts files referenced via @Import and adding to an imported sources list.
+            annotations.filterIsInstance<Import>().forEach {
+                it.paths.forEach { path ->
+                    importedSources += FileScriptSource(scriptBaseDir?.resolve(path)?.canonicalFile ?: File(path))
                 }
-            }}
+            }
             return@onAnnotations ScriptCompilationConfiguration(context.compilationConfiguration) {
                 // Mutex *should* potentially solve concurrency issues when two scripts are set to load the *same* dependency at once.
                 // This can be a side effect of parallel compilation.
                 runBlocking {
-                    zapperMutex.withLock {
-                        libraries.forEach {
-                            libraryManager.loadLibrary(it)
-                        }
-                        dependencies.append(JvmDependency(libraryManager.resolvedPaths.toList()))
+                    libbyMutex.withLock {
+                        // Loading and/or downloading declared libraries and their dependencies.
+                        remoteLibraries.forEach(libraryManager::loadLibrary)
+                        // Appending local libraries to script dependencies.
+                        if (localLibraries.isEmpty() == false)
+                            dependencies.append(JvmDependency(localLibraries))
+                        // Appending resolved remote libraries to script dependencies.
+                        if (remoteLibraries.isEmpty() == false)
+                            dependencies.append(JvmDependency(libraryManager.resolvedPaths.toList()))
                     }
                 }
                 // Adding downloaded libraries as dependencies.

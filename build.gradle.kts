@@ -9,7 +9,7 @@ plugins {
     id("maven-publish")
     id("xyz.jpenilla.run-paper") version "3.0.2"
     id("de.eldoria.plugin-yml.paper") version "0.8.0"
-    id("com.modrinth.minotaur") version "2.8.10"
+    id("com.modrinth.minotaur") version "2.9.0"
     id("io.papermc.hangar-publish-plugin") version "0.1.4"
 }
 

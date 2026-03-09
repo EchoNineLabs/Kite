@@ -18,7 +18,7 @@ class Kite : JavaPlugin() {
         var INSTANCE: Kite? = null
             private set
         // Global instance of ImportsCache for ease of access.
-        var CACHE: ImportsCache? = null
+        var IMPORTS_CACHE: ImportsCache? = null
     }
 
     object Structure {
@@ -42,12 +42,14 @@ class Kite : JavaPlugin() {
                 return@lazy false
             }
         }
+        // Bump this if cache is no longer compatible between releases.
+        const val CACHE_VERSION = "1"
     }
 
     override fun onEnable() {
         INSTANCE = this
         // Initializing ImportsCache.
-        CACHE = ImportsCache()
+        IMPORTS_CACHE = ImportsCache()
         // Initializing ScriptManager and loading all scripts.
         this.scriptManager = ScriptManager(this)
         this.scriptManager.loadAll()

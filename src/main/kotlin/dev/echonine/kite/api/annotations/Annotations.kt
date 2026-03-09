@@ -58,7 +58,7 @@ annotation class Repository(val repository: String)
 @Repeatable
 @Target(AnnotationTarget.FILE)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class Dependency(val dependency: String)
+annotation class Dependency(val dependency: String, val withTransitiveDependencies: Boolean = true)
 
 /**
  * Configures a relocation rule to apply on a matching [Dependency].

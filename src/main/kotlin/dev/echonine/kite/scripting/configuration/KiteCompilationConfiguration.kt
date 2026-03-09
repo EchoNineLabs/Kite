@@ -9,15 +9,13 @@ import dev.echonine.kite.api.annotations.Repository
 import dev.echonine.kite.scripting.configuration.compat.DynamicServerJarCompat
 import dev.echonine.kite.scripting.Script
 import dev.echonine.kite.scripting.ScriptContext
-import dev.echonine.kite.scripting.cache.ImportsCache
 import dev.echonine.kite.scripting.libraries.KiteLibraryManager
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import org.bukkit.Server
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
 import java.security.MessageDigest
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.script.experimental.api.*
 import kotlin.script.experimental.host.FileBasedScriptSource
 import kotlin.script.experimental.host.FileScriptSource
@@ -45,13 +43,7 @@ val updatedClasspath by lazy {
     return@lazy classpath.distinct()
 }
 
-val importsCache = ImportsCache()
-
-// Mutex *should* potentially solve concurrency issues when two scripts are set to load the *same* dependency at once.
-// This can be a side effect of parallel compilation.
-val libbyMutex = Mutex()
-
-// var hasCompilationOccurred = false
+var hasCompilationOccurred = AtomicBoolean(false)
 
 @Suppress("JavaIoSerializableObjectMustHaveReadResolve")
 object KiteCompilationConfiguration : ScriptCompilationConfiguration({
@@ -80,15 +72,13 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
     )
 
     refineConfiguration {
-        // Currently, due to how each script can trigger 'refineConfiguration' in parallel, this log can appear a few times.
-        // Will be disabled for the time being and re-enabled once parallel loading is either removed or fixed.
-        // beforeParsing { context ->
-        //     if (!hasCompilationOccurred) {
-        //         Kite.instance?.logger?.warning("Initializing Kotlin parser and compiler for the first time. This can take a few seconds...")
-        //         hasCompilationOccurred = true
-        //     }
-        //     return@beforeParsing context.compilationConfiguration.asSuccess()
-        // }
+        beforeParsing { context ->
+            if (hasCompilationOccurred.get() == false) {
+                Kite.INSTANCE?.logger?.warning("Initializing Kotlin parser and compiler for the first time. This can take a few seconds...")
+                hasCompilationOccurred.set(true)
+            }
+            return@beforeParsing context.compilationConfiguration.asSuccess()
+        }
         onAnnotations(Import::class, Dependency::class, Repository::class, Relocation::class, handler = { context ->
             // Skipping Kite annotation processor if running outside of server context.
             // At this time, these annotations cannot be easily instructed to work inside IDEA due to technical limitations.
@@ -101,11 +91,10 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 ?: return@onAnnotations context.compilationConfiguration.asSuccess()
             val scriptBaseDir = (context.script as? FileBasedScriptSource)?.file?.parentFile
             val importedSources: MutableList<FileScriptSource> = mutableListOf()
-            // List of dependencies; for later use when appending them to the compilation config.
-            val scriptDependencies: MutableList<String> = mutableListOf()
-            // We don't want to share the instance of DependencyManager between scripts / compiler runs as it can easily store up on stale repositories and dependencies.
+            // We don't want to share the instance of KiteLibraryManager between compiler runs.
+            // Reason: It can easily stock up on stale repositories and dependencies.
             val libraryManager = KiteLibraryManager()
-            // Adding all declared repositories to the (Kite)LibraryManager instance.
+            // Adding all declared repositories to the KiteLibraryManager instance.
             annotations.filterIsInstance<Repository>().map { it.repository }.forEach(libraryManager::addRepository)
             // Getting declared @Dependency and @Relocation annotations.
             val aDependencies = annotations.filterIsInstance<Dependency>()
@@ -116,7 +105,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
             val remoteLibraries = aDependencies.filter { !it.dependency.endsWith(".jar") }.map { aDependency ->
                 return@map Library.builder()
                     // We may want to make this opt-out in the future.
-                    .resolveTransitiveDependencies(true)
+                    .resolveTransitiveDependencies(aDependency.withTransitiveDependencies)
                     .apply {
                         // Adding all declared relocation patterns.
                         aRelocations.forEach { this.relocate(it.pattern, it.newPattern) }
@@ -134,42 +123,20 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 }
             }
             return@onAnnotations ScriptCompilationConfiguration(context.compilationConfiguration) {
-                // Mutex *should* potentially solve concurrency issues when two scripts are set to load the *same* dependency at once.
-                // This can be a side effect of parallel compilation.
                 runBlocking {
-                    libbyMutex.withLock {
-                        // Loading and/or downloading declared libraries and their dependencies.
-                        remoteLibraries.forEach(libraryManager::loadLibrary)
-                        // Appending local libraries to script dependencies.
-                        if (localLibraries.isEmpty() == false)
-                            dependencies.append(JvmDependency(localLibraries))
-                        // Appending resolved remote libraries to script dependencies.
-                        if (remoteLibraries.isEmpty() == false)
-                            dependencies.append(JvmDependency(libraryManager.resolvedPaths.toList()))
-                    }
+                    // Loading and/or downloading declared libraries and their dependencies.
+                    remoteLibraries.forEach(libraryManager::loadLibrary)
+                    // Appending local libraries to script dependencies.
+                    if (localLibraries.isEmpty() == false)
+                        dependencies.append(JvmDependency(localLibraries))
+                    // Appending resolved remote libraries to script dependencies.
+                    if (remoteLibraries.isEmpty() == false)
+                        dependencies.append(JvmDependency(libraryManager.resolvedPaths.toList()))
                 }
-                // Adding downloaded libraries as dependencies.
-                dependencies.append(JvmDependency(scriptDependencies.map { File(Kite.Structure.LIBS_DIR, it) }.filter { it.exists() }))
                 // Appending imported sources to the script.
                 importedSources.takeUnless { it.isEmpty() }?.let { importScripts.append(it) }
             }.asSuccess()
         })
-
-        beforeCompiling { context ->
-            return@beforeCompiling ScriptCompilationConfiguration(context.compilationConfiguration) {
-                val name = context.compilationConfiguration[ScriptCompilationConfiguration.displayName]!!
-                // Getting all imported scripts added to the configuration via annotation processor.
-                val imports = context.compilationConfiguration[ScriptCompilationConfiguration.importScripts]
-                // Appending to the imports cache. Must be launched in a coroutine since ImportsCache#write is a suspend function backed by Mutex.
-                runBlocking {
-                    // Writing non-empty imported script paths to the imports cache.
-                    imports?.mapNotNull { (it as? FileScriptSource)?.file?.path }?.also {
-                        importsCache.append(name, it)
-                    }
-                }
-            }.asSuccess()
-        }
-
     }
 
     ide {
@@ -178,7 +145,6 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
 
     hostConfiguration(ScriptingHostConfiguration {
         jvm {
-            // Configuring compilation cache.
             compilationCache(CompiledScriptJarsCache { script, compilationConfiguration ->
                 // Creating cache directory in case it does not exist.
                 Kite.Structure.CACHE_DIR.mkdirs()
@@ -189,17 +155,20 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 // MD5 checksum acts as a file identifier here.
                 checksum.update(script.text.toByteArray())
                 // Updating digest with all imported scripts.
-                importsCache.cache[name]?.map { File(it) }?.filter { it.exists() }?.forEach {
+                Kite.IMPORTS_CACHE?.cache[name]?.map { File(it) }?.filter { it.exists() }?.forEach {
                     checksum.update(it.readBytes())
                 }
+                // Updating digest with the current cache version.
+                checksum.update(Kite.Environment.CACHE_VERSION.toByteArray())
                 // Converting checksum to a human-readable format so it can be included in the cache file name.
                 val hash = checksum.digest().joinToString("") { "%02x".format(it) }
-                val cacheFileName = "$name.$hash.cache.jar"
+                val file = Kite.Structure.CACHE_DIR.resolve("$name.$hash.cache.jar")
                 // Purging old cache files with different hashes (not the current one).
                 Kite.Structure.CACHE_DIR.listFiles()
-                    ?.filter { it.name.endsWith(".cache.jar") && it.name.split(".").first() == name && it.name != cacheFileName }
+                    ?.filter { it.name.endsWith(".cache.jar") && it.name.split(".").first() == name && it.name != file.name }
                     ?.forEach { it.delete() }
-                return@CompiledScriptJarsCache Kite.Structure.CACHE_DIR.resolve(cacheFileName)
+                // Returning the file that should hold the script cache.
+                return@CompiledScriptJarsCache file
             })
         }
     })

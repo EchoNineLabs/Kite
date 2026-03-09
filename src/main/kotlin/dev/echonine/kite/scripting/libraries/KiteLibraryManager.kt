@@ -9,18 +9,25 @@ import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 import java.util.logging.Logger
 
-// This log adapter only logs warnings and errors.
-// Logging each (transitive) dependency is too verbose.
+// This log adapter is a little less verbose than the default one.
 private class SoftLogAdapter(logger: Logger) : JDKLogAdapter(logger) {
 
     override fun log(level: LogLevel, message: String?) {
-        if (level >= LogLevel.WARN)
-            super.log(level, message)
+        if (message?.startsWith("Downloaded library ") == true)
+            return super.log(level, message.replace("Downloaded library ", "Downloading: "))
+        if (message?.startsWith("Loading library ") == true)
+            return
+        // Anything else logged normally.
+        super.log(level, message)
     }
 
     override fun log(level: LogLevel, message: String?, throwable: Throwable?) {
-        if (level >= LogLevel.WARN)
-            super.log(level, message, throwable)
+        if (message?.startsWith("Downloaded library ") == true)
+            return super.log(level, message.replace("Downloaded library ", "Downloading: "), throwable)
+        if (message?.startsWith("Loading library ") == true)
+            return
+        // Anything else logged normally.
+        super.log(level, message, throwable)
     }
 
 }

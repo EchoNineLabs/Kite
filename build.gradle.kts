@@ -9,7 +9,7 @@ plugins {
     id("maven-publish")
     id("xyz.jpenilla.run-paper") version "3.0.2"
     id("de.eldoria.plugin-yml.paper") version "0.8.0"
-    id("com.modrinth.minotaur") version "2.8.10"
+    id("com.modrinth.minotaur") version "2.9.0"
     id("io.papermc.hangar-publish-plugin") version "0.1.4"
 }
 
@@ -30,7 +30,7 @@ dependencies {
     paperLibrary(kotlin("stdlib"))
     // Runtime Dependencies
     paperLibrary("com.alessiodp.libby:libby-bukkit:2.0.0-SNAPSHOT")
-    paperLibrary("dev.faststats.metrics:bukkit:0.16.0")
+    paperLibrary("dev.faststats.metrics:bukkit:0.17.2")
     // Kotlin Scripting Libraries
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm")
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm-host")

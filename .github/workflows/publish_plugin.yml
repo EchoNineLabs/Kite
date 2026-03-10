@@ -24,15 +24,6 @@ jobs:
       # Setup Gradle
       - name: Gradle
         uses: gradle/actions/setup-gradle@v4
-      # Publish to Maven Central (Sonatype)
-      - name: Build
-        run: ./gradlew clean publish --no-daemon
-        env:
-          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.MAVEN_CENTRAL_GPG_ID }}
-          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.MAVEN_CENTRAL_GPG_PRIVATE }}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.MAVEN_CENTRAL_GPG_PASSWORD }}
       # Generate Changelog
       - id: changelog
         run: |

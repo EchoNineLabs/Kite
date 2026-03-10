@@ -26,7 +26,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
       # Publish to Maven Central (Sonatype)
       - name: Build
-        run: ./gradlew clean publishToMavenCentral --no-daemon
+        run: ./gradlew clean publishAndReleaseToMavenCentral --no-daemon
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}

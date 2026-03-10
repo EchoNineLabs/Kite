@@ -16,7 +16,7 @@ plugins {
 private val NAME = "Kite"
 private val DESCRIPTION = "A lightweight Kotlin scripting plugin"
 
-private val VERSION = "1.2.4"
+private val VERSION = "0-incomplete"
 private val RUN_NUMBER = System.getenv("GITHUB_RUN_NUMBER") ?: "DEV"
 
 group = "dev.echonine.kite"
@@ -156,6 +156,7 @@ mavenPublishing {
         name = NAME
         description = DESCRIPTION
         inceptionYear = "2025"
+        url = "https://github.com/EchoNineLabs/Kite"
         licenses {
             license {
                 name = "MIT"

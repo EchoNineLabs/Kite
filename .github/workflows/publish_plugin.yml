@@ -23,7 +23,7 @@ jobs:
           java-version: 21
       # Setup Gradle
       - name: Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
       # Generate Changelog
       - id: changelog
         run: |

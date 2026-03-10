@@ -6,15 +6,19 @@ import io.papermc.hangarpublishplugin.model.Platforms
 
 plugins {
     kotlin("jvm") version "2.3.10"
-    id("maven-publish")
+    id("com.vanniktech.maven.publish") version "0.36.0"
     id("xyz.jpenilla.run-paper") version "3.0.2"
     id("de.eldoria.plugin-yml.paper") version "0.8.0"
     id("com.modrinth.minotaur") version "2.9.0"
     id("io.papermc.hangar-publish-plugin") version "0.1.4"
 }
 
+private val NAME = "Kite"
+private val DESCRIPTION = "A lightweight Kotlin scripting plugin"
+
 private val VERSION = "1.2.4"
 private val RUN_NUMBER = System.getenv("GITHUB_RUN_NUMBER") ?: "DEV"
+
 group = "dev.echonine.kite"
 version = "$VERSION+$RUN_NUMBER"
 
@@ -43,13 +47,14 @@ dependencies {
 }
 
 paper {
+    name = NAME
+    description = DESCRIPTION
     main = "dev.echonine.kite.Kite"
     loader = "dev.echonine.kite.PluginLibrariesLoader"
     apiVersion = "1.21.1"
     foliaSupported = true
     hasOpenClassloader = true
     generateLibrariesJson = true
-    description = "A lightweight Kotlin scripting plugin"
     website = "https://echonine.dev/kite/"
     authors = listOf("Saturn745", "Grabsky")
 }
@@ -141,36 +146,40 @@ hangarPublish {
 
 java {
     withSourcesJar()
-    withJavadocJar()
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("api") {
-            groupId = "dev.echonine.kite"
-            artifactId = "kite"
-            version = (project.version as String).split("+")[0] // Use only the version part before '+' for publishing.
-
-            from(components["java"])
-
-            versionMapping {
-                usage("java-api") { fromResolutionOf("runtimeClasspath") }
-                usage("java-runtime") { fromResolutionResult() }
+mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
+    coordinates("dev.echonine", "kite", (project.version as String).split("+")[0])
+    pom {
+        name = NAME
+        description = DESCRIPTION
+        inceptionYear = "2025"
+        licenses {
+            license {
+                name = "MIT"
+                url = "https://opensource.org/license/mit"
             }
-
-            repositories {
-                maven {
-                    name = "CodebergPackages"
-                    url = uri("https://codeberg.org/api/packages/EchoNine/maven")
-                    credentials(HttpHeaderCredentials::class.java) {
-                        name = "Authorization"
-                        value = "token ${System.getenv("CODEBERG_TOKEN")}"
-                    }
-                    authentication {
-                        val header by registering(HttpHeaderAuthentication::class)
-                    }
-                }
+        }
+        developers {
+            developer {
+                id = "Saturn745"
+                name = "Saturn"
+                email = "element@echonine.dev"
+                url = "https://github.com/Saturn745"
             }
+            developer {
+                id = "Grabsky"
+                name = "Michał Czopek"
+                email = "michal.czopek.foss@proton.me"
+                url = "https://github.com/Grabsky"
+            }
+        }
+        scm {
+            connection = "scm:git:https://github.com/EchoNineLabs/Kite.git"
+            developerConnection = "scm:git:https://github.com/EchoNineLabs/Kite.git"
+            url = "https://github.com/EchoNineLabs/Kite"
         }
     }
 }

@@ -23,7 +23,7 @@ jobs:
           java-version: 21
       # Setup Gradle
       - name: Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
       # Publish to Maven Central (Sonatype)
       - name: Build
         run: ./gradlew clean publishAndReleaseToMavenCentral --no-daemon

@@ -16,7 +16,7 @@ plugins {
 private val NAME = "Kite"
 private val DESCRIPTION = "A lightweight Kotlin scripting plugin"
 
-private val VERSION = "0-incomplete"
+private val VERSION = "1.3.0"
 private val RUN_NUMBER = System.getenv("GITHUB_RUN_NUMBER") ?: "DEV"
 
 group = "dev.echonine.kite"

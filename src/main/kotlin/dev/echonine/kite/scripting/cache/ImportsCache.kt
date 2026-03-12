@@ -6,51 +6,53 @@ import dev.echonine.kite.Kite
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-typealias DependencyTree = MutableMap<String, MutableSet<String>>
-
 class ImportsCache {
     private val mutex = Mutex()
     private val gson = GsonBuilder().setPrettyPrinting().create()
-    private val file = Kite.Structure.CACHE_DIR.resolve(".imports")
+    private val directory = Kite.Structure.CACHE_DIR.resolve("imports")
 
-    private val typeToken = object : TypeToken<DependencyTree>() { /* TYPE MARKER */ }
-
-    var cache: DependencyTree = mutableMapOf()
-        private set
-
-    init {
-        // Creating parent directories and file in case it does not exist.
-        file.parentFile.mkdirs()
-        file.createNewFile()
-        // Reading file contents.
-        cache = file.bufferedReader().use { gson.fromJson(it, typeToken) } ?: mutableMapOf()
-    }
+    private val typeToken = object : TypeToken<MutableSet<String>>() {}
 
     suspend fun invalidate(name: String) = mutex.withLock {
-        cache.remove(name)
-        // Saving contents to the file.
-        this.save()
+        directory.resolve("$name.json").delete()
     }
 
-    suspend fun append(name: String, dependencies: Collection<String>) = mutex.withLock {
-        // Putting list of dependencies / imports in the map.
-        cache.computeIfAbsent(name) { mutableSetOf() }.addAll(dependencies)
+    suspend fun append(name: String, dependencies: Collection<String>) {
         // Saving contents to the file.
-        this.save()
-    }
-
-    private fun save() {
+        val contents = this.read(name)
+        // Updating contents.
+        contents.addAll(dependencies)
         // Creating parent directories and file in case it does not exist.
-        file.parentFile.mkdirs()
-        file.createNewFile()
-        // Saving contents to the file.
-        file.bufferedWriter().use {
-            try {
-                gson.toJson(cache, typeToken.type, it)
-            } catch (e: Throwable) {
-                e.printStackTrace()
+        val file = directory.resolve("$name.json").also {
+            it.parentFile.mkdirs()
+            it.createNewFile()
+        }
+        // Writing to the file...By using Mutex here, we ensure writes are synchronized.
+        mutex.withLock {
+            file.bufferedWriter().use {
+                try {
+                    gson.toJson(contents, typeToken.type, it)
+                } catch (e: Throwable) {
+                    e.printStackTrace()
+                }
             }
         }
+    }
+
+    suspend fun read(name: String): MutableSet<String> = mutex.withLock {
+        // Creating parent directories and file in case it does not exist.
+        val file = directory.resolve("$name.json").also {
+            it.parentFile.mkdirs()
+            it.createNewFile()
+        }
+        return file.bufferedReader().use {
+            try {
+                gson.fromJson(it, typeToken.type) as? MutableSet<String>
+            } catch (e: Throwable) {
+                e.printStackTrace()
+                return@use null
+            }
+        } ?: mutableSetOf()
     }
 
 }

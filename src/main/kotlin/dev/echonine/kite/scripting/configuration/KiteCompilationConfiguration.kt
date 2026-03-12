@@ -117,10 +117,12 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                     .build()
             }
             // Collecting other .kite.kts files referenced via @Import and adding to an imported sources list.
-            annotations.filterIsInstance<Import>().forEach {
-                it.paths.forEach { path ->
-                    importedSources += FileScriptSource(scriptBaseDir?.resolve(path)?.canonicalFile ?: File(path))
-                }
+            annotations.filterIsInstance<Import>().forEach { aImport ->
+                aImport.paths.map {
+                    val file = scriptBaseDir?.resolve(it)?.canonicalFile ?: File(it)
+                    // We cannot return directory here as it can break the cache until manually removed.
+                    return@map if (file.isDirectory) file.resolve("main.kite.kts") else file
+                }.filter { it.exists() && it.isFile }.forEach { importedSources += FileScriptSource(it) }
             }
             return@onAnnotations ScriptCompilationConfiguration(context.compilationConfiguration) {
                 runBlocking {
@@ -134,6 +136,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                         dependencies.append(JvmDependency(libraryManager.resolvedPaths.toList()))
                 }
                 // Appending imported sources to the script.
+                println("importScripts#append: $importedSources")
                 importedSources.takeUnless { it.isEmpty() }?.let { importScripts.append(it) }
             }.asSuccess()
         })
@@ -155,8 +158,10 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 // MD5 checksum acts as a file identifier here.
                 checksum.update(script.text.toByteArray())
                 // Updating digest with all imported scripts.
-                Kite.IMPORTS_CACHE?.cache[name]?.map { File(it) }?.filter { it.exists() }?.forEach {
-                    checksum.update(it.readBytes())
+                runBlocking {
+                    Kite.IMPORTS_CACHE?.read(name!!)?.map { File(it) }?.filter { it.exists() && it.isFile }?.forEach {
+                        checksum.update(it.readBytes())
+                    }
                 }
                 // Updating digest with the current cache version.
                 checksum.update(Kite.Environment.CACHE_VERSION.toByteArray())

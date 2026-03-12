@@ -15,12 +15,12 @@ plugins {
 
 private val NAME = "Kite"
 private val DESCRIPTION = "A lightweight Kotlin scripting plugin"
-
-private val VERSION = "1.3.0"
-private val RUN_NUMBER = System.getenv("GITHUB_RUN_NUMBER") ?: "DEV"
+private val SUPPORTED_VERSIONS = listOf(
+    "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10", "1.21.11"
+)
 
 group = "dev.echonine.kite"
-version = "$VERSION+$RUN_NUMBER"
+version = "1.3.0"
 
 repositories {
     mavenCentral()
@@ -97,12 +97,12 @@ tasks.modrinth {
 
 // Returns the formatted release name.
 tasks.register("getRelease") {
-    print(VERSION)
+    print(version)
 }
 
 // Returns the formatted tag name.
 tasks.register("getTag") {
-    print("${VERSION}+${RUN_NUMBER}")
+    print(version)
 }
 
 // Adds specified dependency to 'paperLibrary' and 'api' configurations.
@@ -113,30 +113,28 @@ fun addDualDependency(dependencyNotation: String) {
 }
 
 modrinth {
-    token.set(System.getenv("MODRINTH_TOKEN"))
-    projectId.set("kite")
-    versionNumber.set(version.toString())
-    versionType.set("beta")
-    uploadFile.set(tasks.jar.get())
-    gameVersions.addAll("1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10", "1.21.11")
-    loaders.addAll("paper", "purpur", "folia")
-    changelog.set(System.getenv("CHANGELOG"))
+    projectId = "kite"
+    uploadFile = tasks.jar.get()
+    versionType = "beta"
+    versionNumber = project.version as String
+    gameVersions = SUPPORTED_VERSIONS
+    loaders = listOf("paper", "purpur", "folia")
+    token = System.getenv("MODRINTH_TOKEN")
+    changelog = System.getenv("CHANGELOG")
     syncBodyFrom = rootProject.file("README.md").readText()
 }
 
 hangarPublish {
     publications.register("plugin") {
-        version.set(project.version as String)
-        id.set("Kite")
-        channel.set("Beta")
-        changelog.set(System.getenv("CHANGELOG"))
-
-        apiKey.set(System.getenv("HANGAR_TOKEN"))
-
+        id = "Kite"
+        version = project.version as String
+        channel = "Beta"
+        changelog = System.getenv("CHANGELOG")
+        apiKey = System.getenv("HANGAR_TOKEN")
         platforms {
             register(Platforms.PAPER) {
-                jar.set(tasks.jar.flatMap { it.archiveFile })
-                platformVersions.set(listOf("1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10", "1.21.11"))
+                jar = tasks.jar.flatMap { it.archiveFile }
+                platformVersions = SUPPORTED_VERSIONS
             }
         }
     }
@@ -149,7 +147,7 @@ java {
 mavenPublishing {
     publishToMavenCentral()
     signAllPublications()
-    coordinates("dev.echonine", "kite", (project.version as String).split("+")[0])
+    coordinates("dev.echonine", "kite", project.version as String)
     pom {
         name = NAME
         description = DESCRIPTION

@@ -38,8 +38,6 @@ dependencies {
     // Kotlin Scripting Libraries
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm")
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm-host")
-    addDualDependency("org.jetbrains.kotlin:kotlin-scripting-dependencies")
-    addDualDependency("org.jetbrains.kotlin:kotlin-scripting-dependencies-maven")
     // https://github.com/Kotlin/kotlinx.coroutines
     addDualDependency("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     // https://github.com/PaperMC/Paper

@@ -118,11 +118,9 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
             }
             // Collecting other .kite.kts files referenced via @Import and adding to an imported sources list.
             annotations.filterIsInstance<Import>().forEach { aImport ->
-                aImport.paths.map {
-                    val file = scriptBaseDir?.resolve(it)?.canonicalFile ?: File(it)
-                    // We cannot return directory here as it can break the cache until manually removed.
-                    return@map if (file.isDirectory) file.resolve("main.kite.kts") else file
-                }.filter { it.exists() && it.isFile }.forEach { importedSources += FileScriptSource(it) }
+                aImport.paths.map { scriptBaseDir?.resolve(it)?.canonicalFile ?: File(it) }.forEach {
+                    importedSources += FileScriptSource(it)
+                }
             }
             return@onAnnotations ScriptCompilationConfiguration(context.compilationConfiguration) {
                 runBlocking {
@@ -136,7 +134,6 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                         dependencies.append(JvmDependency(libraryManager.resolvedPaths.toList()))
                 }
                 // Appending imported sources to the script.
-                println("importScripts#append: $importedSources")
                 importedSources.takeUnless { it.isEmpty() }?.let { importScripts.append(it) }
             }.asSuccess()
         })
@@ -151,7 +148,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
             compilationCache(CompiledScriptJarsCache { script, compilationConfiguration ->
                 // Creating cache directory in case it does not exist.
                 Kite.Structure.CACHE_DIR.mkdirs()
-                // Creating directories in case they don't exist yet.
+                // Getting name of the script.
                 val name = compilationConfiguration[displayName]
                 val checksum = MessageDigest.getInstance("MD5")
                 // Getting the MD5 checksum and including it in the file name.
@@ -167,11 +164,12 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 checksum.update(Kite.Environment.CACHE_VERSION.toByteArray())
                 // Converting checksum to a human-readable format so it can be included in the cache file name.
                 val hash = checksum.digest().joinToString("") { "%02x".format(it) }
-                val file = Kite.Structure.CACHE_DIR.resolve("$name.$hash.cache.jar")
+                val file = Kite.Structure.CACHE_DIR.resolve("$name/$hash.cache.jar")
                 // Purging old cache files with different hashes (not the current one).
-                Kite.Structure.CACHE_DIR.listFiles()
-                    ?.filter { it.name.endsWith(".cache.jar") && it.name.split(".").first() == name && it.name != file.name }
-                    ?.forEach { it.delete() }
+                Kite.Structure.CACHE_DIR.resolve(name!!).listFiles().forEach {
+                    if (it.name.endsWith(".cache.jar") && it.name != file.name)
+                        it.delete()
+                }
                 // Returning the file that should hold the script cache.
                 return@CompiledScriptJarsCache file
             })

@@ -137,7 +137,7 @@ internal class ScriptManager(val plugin: Kite) {
         }
         // Compiling/loading the script. Measure operation time to verify cache performance.
         val (compiledScript, elapsedTime) = measureTimedValue {
-            scriptingHost.eval(holder.entryPoint.toScriptSource(), compilationConfiguration, evaluationConfiguration)
+            scriptingHost.eval(FileScriptSource(holder.entryPoint), compilationConfiguration, evaluationConfiguration)
         }
         // Logging message after *failed* compilation, but before diagnostics.
         if (compiledScript is ResultWithDiagnostics.Failure) {

@@ -9,12 +9,10 @@ import kotlinx.coroutines.sync.withLock
 class ImportsCache {
     private val mutex = Mutex()
     private val gson = GsonBuilder().setPrettyPrinting().create()
-    private val directory = Kite.Structure.CACHE_DIR.resolve("imports")
-
     private val typeToken = object : TypeToken<MutableSet<String>>() {}
 
     suspend fun invalidate(name: String) = mutex.withLock {
-        directory.resolve("$name.json").delete()
+        Kite.Structure.CACHE_DIR.resolve("$name/imports.json").delete()
     }
 
     suspend fun append(name: String, dependencies: Collection<String>) {
@@ -23,7 +21,7 @@ class ImportsCache {
         // Updating contents.
         contents.addAll(dependencies)
         // Creating parent directories and file in case it does not exist.
-        val file = directory.resolve("$name.json").also {
+        val file = Kite.Structure.CACHE_DIR.resolve("$name/imports.json").also {
             it.parentFile.mkdirs()
             it.createNewFile()
         }
@@ -41,7 +39,7 @@ class ImportsCache {
 
     suspend fun read(name: String): MutableSet<String> = mutex.withLock {
         // Creating parent directories and file in case it does not exist.
-        val file = directory.resolve("$name.json").also {
+        val file = Kite.Structure.CACHE_DIR.resolve("$name/imports.json").also {
             it.parentFile.mkdirs()
             it.createNewFile()
         }

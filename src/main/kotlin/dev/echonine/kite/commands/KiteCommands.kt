@@ -4,12 +4,18 @@ import dev.echonine.kite.Kite
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 
 class KiteCommands(plugin: Kite) : Command("kite") {
 
     internal val scriptManager = plugin.scriptManager
+
+    // This Mutex instance is responsible for locking script lifecycle operations.
+    // Simple way to prevent e.g., reloading the same script twice at the same time.
+    private val lifeCycleMutex = Mutex()
 
     init {
         this.description = "Kite management commands"
@@ -18,30 +24,36 @@ class KiteCommands(plugin: Kite) : Command("kite") {
     }
 
     override fun execute(sender: CommandSender, commandLabel: String, args: Array<out String>): Boolean {
-        when (args.getOrNull(0)?.lowercase() ?: "help") {
-            "list" -> listScripts(sender)
-            "load" -> {
-                if (args.size >= 2)
-                    loadScript(sender, args[1])
-                else sender.sendRichMessage("<dark_gray>› <gray>Syntax: <#C06CEF>/kite load <#EED4FC><script_name>")
+        CoroutineScope(Dispatchers.Default).launch {
+            if (lifeCycleMutex.isLocked) {
+                sender.sendRichMessage("<dark_gray>› <red>Script lifecycle operation is already in progress.")
+                return@launch
             }
+            lifeCycleMutex.withLock {
+                when (args.getOrNull(0)?.lowercase() ?: "help") {
+                    "list" -> listScripts(sender)
+                    "load" -> {
+                        if (args.size >= 2)
+                            loadScript(sender, args[1])
+                        else sender.sendRichMessage("<dark_gray>› <gray>Syntax: <#C06CEF>/kite load <#EED4FC><script_name>")
+                    }
 
-            "unload" -> {
-                if (args.size >= 2)
-                    unloadScript(sender, args[1])
-                else sender.sendRichMessage("<dark_gray>› <gray>Syntax: <#C06CEF>/kite unload <#EED4FC><script_name>")
-            }
+                    "unload" -> {
+                        if (args.size >= 2)
+                            unloadScript(sender, args[1])
+                        else sender.sendRichMessage("<dark_gray>› <gray>Syntax: <#C06CEF>/kite unload <#EED4FC><script_name>")
+                    }
 
-            "reload" -> {
-                if (args.size >= 2)
-                    reloadScript(sender, args[1])
-                else sender.sendRichMessage("<dark_gray>› <gray>Syntax: <#C06CEF>/kite reload <#EED4FC><script_name>")
-            }
+                    "reload" -> {
+                        if (args.size >= 2)
+                            reloadScript(sender, args[1])
+                        else sender.sendRichMessage("<dark_gray>› <gray>Syntax: <#C06CEF>/kite reload <#EED4FC><script_name>")
+                    }
 
-            "reloadall" -> reloadAllScripts(sender)
-            "help" -> {
-                sender.sendRichMessage(
-                    """
+                    "reloadall" -> reloadAllScripts(sender)
+                    "help" -> {
+                        sender.sendRichMessage(
+                            """
                         <gray><st>${" ".repeat(29)}</st>  <#C06CEF>Commands</#C06CEF>  <st>${" ".repeat(29)}</st>
 
                         <dark_gray>›  <#C06CEF>/kite list <gray>– <white>Shows list of all available scripts.
@@ -52,7 +64,9 @@ class KiteCommands(plugin: Kite) : Command("kite") {
 
                         <gray><st>${" ".repeat(74)}</st>
                     """.trimIndent()
-                )
+                        )
+                    }
+                }
             }
         }
         return true
@@ -71,7 +85,7 @@ class KiteCommands(plugin: Kite) : Command("kite") {
         }))
     }
 
-    private fun loadScript(sender: CommandSender, scriptName: String) = CoroutineScope(Dispatchers.IO).launch {
+    private suspend fun loadScript(sender: CommandSender, scriptName: String) {
         // Sending an error message if a script with the specified name does not exist.
         if (scriptManager.gatherAvailableScriptFiles().find { it.name == scriptName } == null)
             sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> does not exist.")
@@ -84,14 +98,14 @@ class KiteCommands(plugin: Kite) : Command("kite") {
         else sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> could not be loaded. Check console for errors.")
     }
 
-    private fun unloadScript(sender: CommandSender, scriptName: String) = CoroutineScope(Dispatchers.Default).launch {
+    private suspend fun unloadScript(sender: CommandSender, scriptName: String) {
         // Unloading and sending a message according to the result.
         if (scriptManager.unload(scriptName))
             sender.sendRichMessage("<dark_gray>› <gray>Script <yellow>$scriptName<gray> has been successfully unloaded.")
         else sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> is not loaded.")
     }
 
-    private fun reloadScript(sender: CommandSender, scriptName: String) = CoroutineScope(Dispatchers.Default).launch {
+    private suspend fun reloadScript(sender: CommandSender, scriptName: String) {
         // Sending an error message if a script with the specified name does not exist.
         if (scriptManager.gatherAvailableScriptFiles().find { it.name == scriptName } == null)
             sender.sendRichMessage("<dark_gray>› <red>Script <yellow>$scriptName<red> does not exist.")
@@ -104,11 +118,11 @@ class KiteCommands(plugin: Kite) : Command("kite") {
         }
     }
 
-    private fun reloadAllScripts(sender: CommandSender) = CoroutineScope(Dispatchers.Default).launch {
+    private suspend fun reloadAllScripts(sender: CommandSender) {
         val loadedScripts = scriptManager.getLoadedScripts().keys.toList()
         if (loadedScripts.isEmpty()) {
             sender.sendRichMessage("<dark_gray>› <red>No scripts are currently loaded.")
-            return@launch
+            return
         }
 
         sender.sendRichMessage("<dark_gray>› <gray>Reloading <yellow>${loadedScripts.size}<gray> script(s)...")

@@ -65,13 +65,10 @@ class KiteCommands(plugin: Kite) : Command("kite") {
             sender.sendRichMessage("<dark_gray>› <red>No scripts were found.")
             return
         }
-        sender.sendRichMessage("<gray><st>${" ".repeat(30)}</st>  <#C06CEF>Scripts</#C06CEF>  <st>${" ".repeat(30)}</st><newline>")
-        scripts.forEach { name ->
-            if (scriptManager.isScriptLoaded(name))
-                sender.sendRichMessage("<dark_gray>›  <green>$name <gray>(Loaded)")
-            else sender.sendRichMessage("<dark_gray>›  <red>$name")
-        }
-        sender.sendRichMessage("<newline><gray><st>${" ".repeat(73)}</st>")
+        sender.sendRichMessage("<#C06CEF>Kite Scripts (${scripts.size}):")
+        sender.sendRichMessage("<gray> - " + scripts.joinToString(separator = ", ", transform = {
+            return@joinToString if (scriptManager.isScriptLoaded(it)) "<green>${it}</green>" else "<gray>${it}</gray>"
+        }))
     }
 
     private fun loadScript(sender: CommandSender, scriptName: String) = CoroutineScope(Dispatchers.IO).launch {

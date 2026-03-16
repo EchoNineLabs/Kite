@@ -121,9 +121,6 @@ internal class ScriptManager(val plugin: Kite) {
                 }
             }
         }
-        // Getting the cache file and its last modified date before compilation. Used in a later step for determining whether cache was used or not.
-        val cacheFile = Kite.Structure.CACHE_DIR.listFiles()?.firstOrNull { it.name.startsWith("${script.name}.") && it.name.endsWith(".cache.jar") }
-        val cacheLastModified = cacheFile?.lastModified() ?: 0L
         // Creating EvaluationConfiguration based on KiteEvaluationConfiguration template.
         val evaluationConfiguration = KiteEvaluationConfiguration.with {
             jvm {
@@ -157,7 +154,7 @@ internal class ScriptManager(val plugin: Kite) {
         }
         // Logging message after *successful* compilation, and after diagnostics.
         if (compiledScript is ResultWithDiagnostics.Success) {
-            if (cacheFile != null && cacheFile.lastModified() == cacheLastModified) {
+            if (!wasCacheInvalidated.get()) {
                 logger.infoRich("Compiled <yellow>${holder.name}</yellow> from cache in <yellow>${elapsedTime.inWholeMilliseconds}ms</yellow>.")
             } else {
                 logger.infoRich("Compiled <yellow>${holder.name}</yellow> in <yellow>${elapsedTime.inWholeMilliseconds}ms</yellow>.")

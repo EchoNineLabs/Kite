@@ -13,6 +13,8 @@ plugins {
     id("io.papermc.hangar-publish-plugin") version "0.1.4"
 }
 
+
+
 private val NAME = "Kite"
 private val DESCRIPTION = "A lightweight Kotlin scripting plugin"
 private val SUPPORTED_VERSIONS = listOf(
@@ -21,6 +23,15 @@ private val SUPPORTED_VERSIONS = listOf(
 
 group = "dev.echonine.kite"
 version = "1.3.0"
+
+if (System.getenv("CI") != "true") {
+    val commitHash = ProcessBuilder(listOf("git", "rev-parse", "--short", "--verify", "HEAD"))
+            .directory(project.rootDir)
+            .redirectErrorStream(true)
+            .start()
+            .inputStream.bufferedReader().readText().trim()
+    version = "$version+${if (commitHash.length == 7) commitHash else "DEV"}"
+}
 
 repositories {
     mavenCentral()

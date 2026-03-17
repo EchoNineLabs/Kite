@@ -43,7 +43,7 @@ internal class ScriptManager(val plugin: Kite) {
     /**
      * Returns an unmodifiable view of all loaded scripts.
      */
-    fun getLoadedScripts(): @Unmodifiable Map<String, ScriptContext> = loadedScripts.toMap()
+    fun getLoadedScripts(): @Unmodifiable Map<String, ScriptContext> = loadedScripts.toSortedMap()
 
     /**
      * Returns true if a script with the specified name is currently loaded.
@@ -56,10 +56,11 @@ internal class ScriptManager(val plugin: Kite) {
     fun gatherAvailableScriptFiles(): List<ScriptHolder> {
         // Creating scripts directory in case it does not exist.
         Kite.Structure.SCRIPTS_DIR.mkdirs()
-        // Otherwise, iterating over all files inside scripts directory.
+        // Iterating over all files inside scripts directory.
         return Kite.Structure.SCRIPTS_DIR.listFiles()
             ?.mapNotNull { ScriptHolder.fromName(it.nameWithoutExtensions, Kite.Structure.SCRIPTS_DIR) }
             ?.distinctBy { it.name }
+            ?.sortedBy { it.name }
             ?.toList() ?: emptyList()
     }
 
@@ -67,7 +68,7 @@ internal class ScriptManager(val plugin: Kite) {
      * Compiles and loads all available scripts.
      */
     fun loadAll() {
-        val scriptHolders = gatherAvailableScriptFiles().sortedBy { it.name }
+        val scriptHolders = gatherAvailableScriptFiles()
         logger.infoRich("Compiling <yellow>${scriptHolders.size} <reset>script(s)...")
         val (compiledScripts, elapsedCompilationTime) = measureTimedValue {
             runBlocking {

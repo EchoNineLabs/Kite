@@ -61,7 +61,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
 
     jvm {
         updateClasspath(updatedClasspath)
-        dependenciesFromClassloader(wholeClasspath = true, unpackJarCollections = true)
+        dependenciesFromClassloader(wholeClasspath = true)
         dependenciesFromClassContext(Kite::class, wholeClasspath = true)
         compilerOptions("-jvm-target", "21", "-Xcontext-parameters")
     }

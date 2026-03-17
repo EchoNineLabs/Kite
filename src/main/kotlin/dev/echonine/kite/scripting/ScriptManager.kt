@@ -3,6 +3,7 @@ package dev.echonine.kite.scripting
 import dev.echonine.kite.Kite
 import dev.echonine.kite.scripting.configuration.KiteCompilationConfiguration
 import dev.echonine.kite.scripting.configuration.KiteEvaluationConfiguration
+import dev.echonine.kite.scripting.configuration.KiteScriptingHostConfiguration
 import dev.echonine.kite.util.extensions.errorRich
 import dev.echonine.kite.util.extensions.infoRich
 import dev.echonine.kite.util.extensions.nameWithoutExtensions
@@ -28,7 +29,6 @@ import kotlin.script.experimental.api.providedProperties
 import kotlin.script.experimental.api.refineConfiguration
 import kotlin.script.experimental.api.with
 import kotlin.script.experimental.host.FileScriptSource
-import kotlin.script.experimental.host.toScriptSource
 import kotlin.script.experimental.jvm.baseClassLoader
 import kotlin.script.experimental.jvm.jvm
 import kotlin.script.experimental.jvmhost.BasicJvmScriptingHost
@@ -38,7 +38,7 @@ import kotlin.time.measureTimedValue
 internal class ScriptManager(val plugin: Kite) {
     private val logger = ComponentLogger.logger("Kite")
     private val loadedScripts = mutableMapOf<String, ScriptContext>()
-    private val scriptingHost = BasicJvmScriptingHost()
+    private val scriptingHost = BasicJvmScriptingHost(KiteScriptingHostConfiguration)
 
     /**
      * Returns an unmodifiable view of all loaded scripts.

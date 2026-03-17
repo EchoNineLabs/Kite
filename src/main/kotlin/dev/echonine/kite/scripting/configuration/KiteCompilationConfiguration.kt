@@ -100,7 +100,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
             val aDependencies = annotations.filterIsInstance<Dependency>()
             val aRelocations = annotations.filterIsInstance<Relocation>()
             // Mapping declared (local) dependencies to File instances.
-            val localLibraries = aDependencies.filter { it.dependency.endsWith(".jar") }.map { Kite.Structure.LIBS_DIR.resolve(it.dependency) }.filter { it.exists() }
+            val localLibraries = aDependencies.filter { it.dependency.endsWith(".jar") }.map { Kite.Structure.LIBS_DIR.resolve(it.dependency).canonicalFile }.filter { it.exists() }
             // Mapping declared (remote) dependencies to Library instances.
             val remoteLibraries = aDependencies.filter { !it.dependency.endsWith(".jar") }.map { aDependency ->
                 return@map Library.builder()

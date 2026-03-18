@@ -13,8 +13,6 @@ plugins {
     id("io.papermc.hangar-publish-plugin") version "0.1.4"
 }
 
-
-
 private val NAME = "Kite"
 private val DESCRIPTION = "A lightweight Kotlin scripting plugin"
 private val SUPPORTED_VERSIONS = listOf(
@@ -22,7 +20,7 @@ private val SUPPORTED_VERSIONS = listOf(
 )
 
 group = "dev.echonine.kite"
-version = "1.3.0"
+version = "1.4.0"
 
 if (System.getenv("CI") != "true") {
     val commitHash = ProcessBuilder(listOf("git", "rev-parse", "--short", "--verify", "HEAD"))
@@ -76,12 +74,12 @@ tasks {
         minecraftVersion("1.21.1")
         downloadPlugins {
             // Downloading ViaVersion and ViaBackwards for testing on lower (or higher) versions.
-            modrinth("viaversion", "5.6.0")
-            modrinth("viabackwards", "5.6.0")
+            modrinth("viaversion", "5.7.2")
+            modrinth("viabackwards", "5.7.2")
             // Downloading MiniPlaceholders 3.1.0. ID must be used because the same version number is used for multiple platforms.
             modrinth("miniplaceholders", "4zOT6txC")
             // Downloading PlaceholderAPI with Folia support included starting from 2.11.7.
-            modrinth("placeholderapi", "2.11.7")
+            modrinth("placeholderapi", "2.12.2")
         }
     }
     // Configuring 'runServer' task to use JetBrains' JDK 21 for expanded hot-swap features.

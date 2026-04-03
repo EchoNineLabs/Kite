@@ -43,7 +43,7 @@ dependencies {
     paperLibrary(kotlin("stdlib"))
     // Runtime Dependencies
     paperLibrary("com.alessiodp.libby:libby-bukkit:2.0.0-SNAPSHOT")
-    paperLibrary("dev.faststats.metrics:bukkit:0.20.0")
+    paperLibrary("dev.faststats.metrics:bukkit:0.20.1")
     // Kotlin Scripting Libraries
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm")
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm-host")

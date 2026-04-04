@@ -35,8 +35,8 @@ jobs:
           # Get the last successful workflow run
           echo "Looking for previous successful publish runs..."
           
-          echo "Running: gh run list --workflow=publish.yml --status=success --limit=1 --json headSha"
-          RUNS_OUTPUT=$(gh run list --workflow=publish.yml --status=success --limit=1 --json headSha)
+          echo "Running: gh run list --workflow=publish_plugin.yml --status=success --limit=1 --json headSha"
+          RUNS_OUTPUT=$(gh run list --workflow=publish_plugin.yml --status=success --limit=1 --json headSha)
           echo "Raw output: $RUNS_OUTPUT"
           
           if echo "$RUNS_OUTPUT" | jq -e '.[0].headSha' >/dev/null 2>&1; then

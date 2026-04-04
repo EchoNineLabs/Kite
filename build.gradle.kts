@@ -16,7 +16,7 @@ plugins {
 private val NAME = "Kite"
 private val DESCRIPTION = "A lightweight Kotlin scripting plugin"
 private val SUPPORTED_VERSIONS = listOf(
-    "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10", "1.21.11"
+    "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10", "1.21.11", "26.1", "26.1.1"
 )
 
 group = "dev.echonine.kite"
@@ -71,7 +71,7 @@ runPaper.folia.registerTask()
 tasks {
     // Shared configuration for runServer and runFolia tasks.
     withType(RunServer::class) {
-        minecraftVersion("1.21.1")
+        minecraftVersion("26.1.1")
         downloadPlugins {
             // Downloading ViaVersion and ViaBackwards for testing on lower (or higher) versions.
             modrinth("viaversion", "5.7.2")
@@ -86,7 +86,7 @@ tasks {
     withType(AbstractRun::class) {
         javaLauncher = project.javaToolchains.launcherFor {
             vendor = JvmVendorSpec.JETBRAINS
-            languageVersion = JavaLanguageVersion.of(21)
+            languageVersion = JavaLanguageVersion.of(25)
         }
         jvmArgs("-XX:+AllowEnhancedClassRedefinition", "-Dcom.mojang.eula.agree=true", "-Dnet.kyori.ansi.colorLevel=truecolor")
     }

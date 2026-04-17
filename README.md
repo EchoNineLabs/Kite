@@ -4,10 +4,10 @@
 <a href=https://discord.gg/xYcjBKqkDz><img alt="discord-plural" height="54" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/social/discord-plural_vector.svg"></a>
 <a href=https://echonine.dev/kite/getting-started><img alt="discord-plural" height="54" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/documentation/readthedocs_vector.svg"></a>
 
-**Kite** is plugin that provides a Kotlin scripting runtime for Paper-based Minecraft servers.  
+**Kite** provides a Kotlin scripting runtime for Paper-based Minecraft servers.  
 Designed for small and simple tasks and serves as a much more powerful alternative to Skript and other scripting plugins.
 
-<img width="2844" height="849" alt="image" src="https://github.com/user-attachments/assets/4460b181-0ae1-4573-b833-e7d4eb1b5ec4" />
+<img width="1422" alt="image" src="https://github.com/user-attachments/assets/4460b181-0ae1-4573-b833-e7d4eb1b5ec4" />
 
 <br>
 

@@ -79,10 +79,11 @@ internal class ScriptManager(val plugin: Kite) {
         // Loading compiled scripts.
         val elapsedExecutionTime = measureTime {
             for (script in compiledScripts) try {
-                loadedScripts[script.name] = script
                 script.runOnLoad()
-            } catch (e: Exception) {
-                e.printStackTrace()
+                loadedScripts[script.name] = script
+            } catch (thr: Throwable) {
+                script.cleanup()
+                logger.errorRich("Script <yellow>${script.name}</yellow> thrown error(s) during evaluation:", thr)
             }
         }
         logger.infoRich("Successfully loaded <yellow>${loadedScripts.size} <reset>out of total <yellow>${compiledScripts.size}<reset> scripts.")
@@ -185,11 +186,17 @@ internal class ScriptManager(val plugin: Kite) {
             try {
                 compileScriptAsync(holder)?.let { script ->
                     plugin.server.globalRegionScheduler.execute(plugin, {
-                        loadedScripts[script.name] = script
-                        script.runOnLoad()
-                        logger.infoRich("Script <yellow>${holder.name}</yellow> has been successfully loaded.")
-                        // Resuming the coroutine.
-                        coroutine.resume(true)
+                        try {
+                            script.runOnLoad()
+                            loadedScripts[script.name] = script
+                            logger.infoRich("Script <yellow>${holder.name}</yellow> has been successfully loaded.")
+                            coroutine.resume(true)
+                        } catch (thr: Throwable) {
+                            script.cleanup()
+                            logger.errorRich("Script <yellow>${holder.name}</yellow> thrown error(s) during evaluation:", thr)
+                        } finally {
+                            coroutine.resume(false)
+                        }
                     })
                 } ?: coroutine.resume(false)
             } catch (e: Exception) {

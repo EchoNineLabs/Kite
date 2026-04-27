@@ -11,8 +11,10 @@ fun ComponentLogger.warnRich(message: String) {
     this.warn(MiniMessage.miniMessage().deserialize("<yellow>$message)"))
 }
 
-fun ComponentLogger.errorRich(message: String) {
-    this.error(MiniMessage.miniMessage().deserialize("<red>$message"))
+fun ComponentLogger.errorRich(message: String, throwable: Throwable? = null) {
+    if (throwable == null)
+        this.error(MiniMessage.miniMessage().deserialize("<red>$message"))
+    else this.error(MiniMessage.miniMessage().deserialize("<red>$message"), throwable)
 }
 
 fun ComponentLogger.debugRich(message: String) {

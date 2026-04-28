@@ -67,8 +67,8 @@ jobs:
                 line_count++
                 if (line_count == 1) { hash = $0 }
                 else if (line_count == 2) { shorthash = $0 }
-                else if (line_count == 3) { gsub(/ <[^>]*@[^>]*>/, "", $0); subject = $0 }
-                else if ($0 != "") { gsub(/ <[^>]*@[^>]*>/, "", $0); body = body "  " $0 "\n" }
+                else if (line_count == 3) { subject = $0 }
+                else if ($0 != "" && $0 !~ /^Co-authored-by:/) { body = body "  " $0 "\n" }
               }
             '
           }

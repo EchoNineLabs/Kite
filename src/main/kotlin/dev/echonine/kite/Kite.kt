@@ -3,12 +3,17 @@ package dev.echonine.kite
 import dev.echonine.kite.commands.KiteCommands
 import dev.echonine.kite.scripting.ScriptManager
 import dev.echonine.kite.scripting.cache.ImportsCache
+import dev.echonine.kite.util.checkForUpdates
 import dev.faststats.bukkit.BukkitMetrics
+import org.bukkit.event.EventHandler
+import org.bukkit.event.Listener
+import org.bukkit.event.server.ServerLoadEvent
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 @Suppress("unused")
-class Kite : JavaPlugin() {
+class Kite : JavaPlugin(), Listener {
 
     internal lateinit var scriptManager: ScriptManager
     internal lateinit var bStats: Metrics
@@ -55,10 +60,20 @@ class Kite : JavaPlugin() {
         this.scriptManager.loadAll()
         // Registering command(s).
         this.server.commandMap.register("kite", KiteCommands(this))
+        // Registering event listener(s).
+        this.server.pluginManager.registerEvents(this, this)
         // Setting up bStats metrics.
         this.bStats = Metrics(this, 27748)
         // Setting up FastStats metrics.
-        this.fastStats = BukkitMetrics.factory().token("07d3945a3186e2496be316aaf948c24b").create(this);
+        this.fastStats = BukkitMetrics.factory().token("07d3945a3186e2496be316aaf948c24b").create(this)
+    }
+
+    // Scheduled after server has been fully loaded so that message appears at the very end of the initial log.
+    @EventHandler
+    fun onServerLoad(event: ServerLoadEvent) {
+        server.asyncScheduler.runDelayed(this, {
+            checkForUpdates()
+        }, 1, TimeUnit.SECONDS)
     }
 
     override fun onDisable() {

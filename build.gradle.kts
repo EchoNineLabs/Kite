@@ -50,7 +50,7 @@ dependencies {
     // https://github.com/Kotlin/kotlinx.coroutines
     addDualDependency("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     // https://github.com/PaperMC/Paper
-    compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:26.1.2.build.53-stable")
 }
 
 paper {

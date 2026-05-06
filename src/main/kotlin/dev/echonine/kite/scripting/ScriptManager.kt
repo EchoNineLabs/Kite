@@ -195,7 +195,8 @@ internal class ScriptManager(val plugin: Kite) {
                             script.cleanup()
                             logger.errorRich("Script <yellow>${holder.name}</yellow> thrown error(s) during evaluation:", thr)
                         } finally {
-                            coroutine.resume(false)
+                            if (!coroutine.isCompleted)
+                                coroutine.resume(false)
                         }
                     })
                 } ?: coroutine.resume(false)

@@ -34,7 +34,7 @@ private class SoftLogAdapter(logger: Logger) : JDKLogAdapter(logger) {
 
 // This class is based on BukkitLibraryLoader and exists solely to track resolved dependencies.
 // Neither LibraryLoader#downloadLibrary nor LibraryLoader#loadLibrary do not return a comprehensive list of resolved dependencies.
-class KiteLibraryManager : LibraryManager(SoftLogAdapter(Kite.INSTANCE!!.logger), Kite.Structure.KITE_DIR.toPath(), Kite.Structure.LIBS_DIR.name) {
+class KiteLibraryManager(libsDirectory: File) : LibraryManager(SoftLogAdapter(Kite.INSTANCE!!.logger), libsDirectory.parentFile.toPath(), libsDirectory.name) {
     val resolvedPaths = ConcurrentHashMap.newKeySet<File>()!!
 
     // See that super method is not called here.

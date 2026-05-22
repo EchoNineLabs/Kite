@@ -224,7 +224,11 @@ internal class ScriptManager(val plugin: Kite) {
     // Unloads specified script by it's context.
     private suspend fun unload(script: ScriptContext): Boolean = suspendCancellableCoroutine { coroutine ->
         plugin.server.globalRegionScheduler.execute(plugin, {
-            script.runOnUnload()
+            try {
+                script.runOnUnload()
+            } catch (thr: Throwable) {
+                logger.errorRich("Script <yellow>${script.name}</yellow> thrown error(s) during unload:", thr)
+            }
             script.cleanup()
             loadedScripts.remove(script.name)
             // Resuming the coroutine.

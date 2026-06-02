@@ -48,7 +48,7 @@ class Kite : JavaPlugin(), Listener {
             }
         }
         // Bump this if cache is no longer compatible between releases.
-        const val CACHE_VERSION = "3"
+        const val CACHE_VERSION = "4"
     }
 
     override fun onEnable() {

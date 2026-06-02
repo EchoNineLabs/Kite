@@ -91,9 +91,12 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 ?: return@onAnnotations context.compilationConfiguration.asSuccess()
             val scriptBaseDir = (context.script as? FileBasedScriptSource)?.file?.parentFile
             val importedSources: MutableList<FileScriptSource> = mutableListOf()
-            // We don't want to share the instance of KiteLibraryManager between compiler runs.
-            // Reason: It can easily stock up on stale repositories and dependencies.
-            val libraryManager = KiteLibraryManager()
+            val libsDirectory = Kite.Structure.CACHE_DIR.resolve("${context.compilationConfiguration[displayName]}").resolve("libs")
+            // Creating KiteLibraryManager instance. Downloads are placed in scripts' own 'plugins/Kite/cache/{SCRIPT}/libs/' directory because:
+            //   (1) this improves script isolation
+            //   (2) this does not require any extra tracking to know which dependencies should be added to runtime classpath
+            // We also don't want to share the instance of KiteLibraryManager between compiler runs. It can easily stock up on stale repositories and dependencies.
+            val libraryManager = KiteLibraryManager(libsDirectory)
             // Adding all declared repositories to the KiteLibraryManager instance.
             annotations.filterIsInstance<Repository>().map { it.repository }.forEach(libraryManager::addRepository)
             // Getting declared @Dependency and @Relocation annotations.

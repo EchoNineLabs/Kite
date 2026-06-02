@@ -16,6 +16,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger
 import org.jetbrains.annotations.Unmodifiable
+import java.net.URLClassLoader
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 import kotlin.script.experimental.api.ResultWithDiagnostics
@@ -123,10 +124,16 @@ internal class ScriptManager(val plugin: Kite) {
                 }
             }
         }
+        // Building a classloader that includes any JARs downloaded into the per-script libs directory.
+        val dependencies = Kite.Structure.CACHE_DIR.resolve(script.name).resolve("libs").walkTopDown()
+            .filter { it.isFile && it.extension == "jar" }
+            .map { it.toURI().toURL() }
+            .toList()
+        val classLoader = if (dependencies.isEmpty() == false) URLClassLoader(dependencies.toTypedArray(), Kite::class.java.classLoader) else Kite::class.java.classLoader
         // Creating EvaluationConfiguration based on KiteEvaluationConfiguration template.
         val evaluationConfiguration = KiteEvaluationConfiguration.with {
             jvm {
-                baseClassLoader(Kite::class.java.classLoader)
+                baseClassLoader(classLoader)
             }
             implicitReceivers(script)
             providedProperties(mapOf(

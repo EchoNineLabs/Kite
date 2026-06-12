@@ -40,13 +40,6 @@ class Kite : JavaPlugin(), Listener {
     }
 
     object Environment {
-        val IS_SERVER_AVAILABLE by lazy {
-            try {
-                return@lazy Class.forName("org.bukkit.Server") != null
-            } catch (e: ClassNotFoundException) {
-                return@lazy false
-            }
-        }
         // Bump this if cache is no longer compatible between releases.
         const val CACHE_VERSION = "4"
     }

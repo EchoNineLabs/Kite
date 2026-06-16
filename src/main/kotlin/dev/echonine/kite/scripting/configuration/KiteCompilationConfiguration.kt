@@ -82,7 +82,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
         onAnnotations(Import::class, Dependency::class, Repository::class, Relocation::class, handler = { context ->
             // Skipping Kite annotation processor if running outside of server context.
             // At this time, these annotations cannot be easily instructed to work inside IDEA due to technical limitations.
-            if (!Kite.Environment.IS_SERVER_AVAILABLE)
+            if (Kite.INSTANCE == null)
                 return@onAnnotations context.compilationConfiguration.asSuccess()
             // Collecting all defined annotations.
             val annotations = context.collectedData?.get(ScriptCollectedData.collectedAnnotations)

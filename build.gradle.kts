@@ -11,6 +11,7 @@ plugins {
     id("de.eldoria.plugin-yml.paper") version "0.9.0"
     id("com.modrinth.minotaur") version "2.9.0"
     id("io.papermc.hangar-publish-plugin") version "0.1.4"
+    id("com.gradleup.shadow") version "9.4.2"
 }
 
 private val NAME = "Kite"
@@ -31,19 +32,24 @@ if (System.getenv("CI") != "true") {
     version = "$version+${if (commitHash.length == 7) commitHash else "DEV"}"
 }
 
-repositories {
-    mavenCentral()
-    maven { name = "alessiodp-snapshots"; url = uri("https://repo.alessiodp.com/snapshots") }
-    maven { name = "papermc"; url = uri("https://repo.papermc.io/repository/maven-public/") }
-    maven { name = "faststats"; url = uri("https://repo.faststats.dev/releases") }
+val shadowImplementation by configurations.creating
+
+configurations.implementation {
+    extendsFrom(shadowImplementation)
 }
 
+repositories {
+    mavenCentral()
+    maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
+    maven { url = uri("https://repo.alessiodp.com/snapshots") }
+    maven { url = uri("https://repo.faststats.dev/releases") }
+}
+
+// Shading Maven Central dependencies is not needed.
+// Only if the repository becomes unreliable in the future.
 dependencies {
     // Kotlin Standard Library
     paperLibrary(kotlin("stdlib"))
-    // Runtime Dependencies
-    paperLibrary("com.alessiodp.libby:libby-bukkit:2.0.0-SNAPSHOT")
-    paperLibrary("dev.faststats.metrics:bukkit:0.26.1")
     // Kotlin Scripting Libraries
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm")
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm-host")
@@ -51,6 +57,10 @@ dependencies {
     addDualDependency("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     // https://github.com/PaperMC/Paper
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+    // https://github.com/AlessioDP/libby
+    shadowImplementation("com.alessiodp.libby:libby-bukkit:2.0.0-SNAPSHOT")
+    // https://github.com/faststats-dev/faststats-java
+    shadowImplementation("dev.faststats.metrics:bukkit:0.27.0")
 }
 
 paper {
@@ -97,7 +107,12 @@ tasks {
             freeCompilerArgs = listOf("-Xcontext-parameters")
         }
     }
-
+    shadowJar {
+        configurations = listOf(shadowImplementation)
+        archiveFileName.set("${project.name}-${version}.jar")
+        relocate("dev.faststats", "dev.echonine.kite.libs.dev.faststats")
+        relocate("com.alessiodp", "dev.echonine.kite.libs.com.alessiodp")
+    }
 }
 
 tasks.modrinth {

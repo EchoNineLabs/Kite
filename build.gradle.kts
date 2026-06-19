@@ -54,7 +54,7 @@ dependencies {
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm")
     addDualDependency("org.jetbrains.kotlin:kotlin-scripting-jvm-host")
     // https://github.com/Kotlin/kotlinx.coroutines
-    addDualDependency("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    addDualDependency("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
     // https://github.com/PaperMC/Paper
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
     // https://github.com/AlessioDP/libby

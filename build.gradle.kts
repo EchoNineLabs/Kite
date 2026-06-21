@@ -6,7 +6,7 @@ import io.papermc.hangarpublishplugin.model.Platforms
 
 plugins {
     kotlin("jvm") version "2.4.0"
-    id("com.vanniktech.maven.publish") version "0.36.0"
+    id("com.vanniktech.maven.publish") version "0.37.0"
     id("xyz.jpenilla.run-paper") version "3.0.2"
     id("de.eldoria.plugin-yml.paper") version "0.9.0"
     id("com.modrinth.minotaur") version "2.9.0"

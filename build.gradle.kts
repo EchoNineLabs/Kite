@@ -64,7 +64,7 @@ dependencies {
     // https://github.com/AlessioDP/libby
     shadowImplementation("com.alessiodp.libby:libby-bukkit:2.0.0-SNAPSHOT")
     // https://github.com/faststats-dev/faststats-java
-    shadowImplementation("dev.faststats.metrics:bukkit:0.27.0")
+    shadowImplementation("dev.faststats.metrics:bukkit:0.27.1")
 }
 
 paper {

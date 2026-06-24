@@ -16,13 +16,45 @@ import java.util.concurrent.TimeUnit
 class Kite : JavaPlugin(), Listener {
 
     internal lateinit var scriptManager: ScriptManager
-    internal lateinit var fastStats: BukkitContext
+
+    internal var fastStats: BukkitContext =
+        BukkitContext.Factory(this, "07d3945a3186e2496be316aaf948c24b")
+            .metrics(dev.faststats.Metrics.Factory::create)
+            .create()
 
     companion object {
         var INSTANCE: Kite? = null
             private set
         // Global instance of ImportsCache for ease of access.
         var IMPORTS_CACHE: ImportsCache? = null
+    }
+
+    override fun onEnable() {
+        INSTANCE = this
+        // Initializing ImportsCache.
+        IMPORTS_CACHE = ImportsCache()
+        // Initializing ScriptManager and loading all scripts.
+        this.scriptManager = ScriptManager(this)
+        this.scriptManager.loadAll()
+        // Registering command(s).
+        this.server.commandMap.register("kite", KiteCommands(this))
+        // Registering event listener(s).
+        this.server.pluginManager.registerEvents(this, this)
+        // Enabling FastStats instance.
+        fastStats.ready()
+    }
+
+    override fun onDisable() {
+        // Shutting down FastStats instance.
+        fastStats.shutdown()
+    }
+
+    // Scheduled after server has been fully loaded so that message appears at the very end of the initial log.
+    @EventHandler
+    fun onServerLoad(event: ServerLoadEvent) {
+        server.asyncScheduler.runDelayed(this, {
+            checkForUpdates()
+        }, 1, TimeUnit.SECONDS)
     }
 
     object Structure {
@@ -41,37 +73,6 @@ class Kite : JavaPlugin(), Listener {
     object Environment {
         // Bump this if cache is no longer compatible between releases.
         const val CACHE_VERSION = "4"
-    }
-
-    override fun onEnable() {
-        INSTANCE = this
-        // Initializing ImportsCache.
-        IMPORTS_CACHE = ImportsCache()
-        // Initializing ScriptManager and loading all scripts.
-        this.scriptManager = ScriptManager(this)
-        this.scriptManager.loadAll()
-        // Registering command(s).
-        this.server.commandMap.register("kite", KiteCommands(this))
-        // Registering event listener(s).
-        this.server.pluginManager.registerEvents(this, this)
-        // Setting up FastStats metrics.
-        this.fastStats = BukkitContext.Factory(this, "07d3945a3186e2496be316aaf948c24b")
-            .metrics(dev.faststats.Metrics.Factory::create)
-            .create()
-
-    }
-
-    // Scheduled after server has been fully loaded so that message appears at the very end of the initial log.
-    @EventHandler
-    fun onServerLoad(event: ServerLoadEvent) {
-        server.asyncScheduler.runDelayed(this, {
-            checkForUpdates()
-        }, 1, TimeUnit.SECONDS)
-    }
-
-    override fun onDisable() {
-        // Shutting down FastStats SDK.
-        fastStats.shutdown()
     }
 
 }

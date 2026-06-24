@@ -38,6 +38,10 @@ configurations.implementation {
     extendsFrom(shadowImplementation)
 }
 
+tasks.named("runServer") {
+    dependsOn(tasks.named("jar"))
+}
+
 repositories {
     mavenCentral()
     maven { url = uri("https://repo.papermc.io/repository/maven-public/") }

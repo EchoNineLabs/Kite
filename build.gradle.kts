@@ -11,7 +11,7 @@ plugins {
     id("de.eldoria.plugin-yml.paper") version "0.9.0"
     id("com.modrinth.minotaur") version "2.9.0"
     id("io.papermc.hangar-publish-plugin") version "0.1.4"
-    id("com.gradleup.shadow") version "9.4.2"
+    id("com.gradleup.shadow") version "9.4.3"
 }
 
 private val NAME = "Kite"

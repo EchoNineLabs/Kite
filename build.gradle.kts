@@ -27,7 +27,7 @@ private val SUPPORTED_VERSIONS = listOf(
 )
 
 group = "dev.echonine.kite"
-version = "1.5.2"
+version = "1.6.0"
 
 if (System.getenv("CI") != "true") {
     val commitHash = ProcessBuilder(listOf("git", "rev-parse", "--short", "--verify", "HEAD"))

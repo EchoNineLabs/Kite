@@ -51,8 +51,11 @@ tasks.named("runServer") {
 repositories {
     mavenCentral()
     maven { url = uri("https://repo.papermc.io/repository/maven-public/") }
-    maven { url = uri("https://repo.alessiodp.com/snapshots") }
     maven { url = uri("https://repo.faststats.dev/releases") }
+    // Maven Central does not allow SNAPSHOT dependencies.
+    // Libby (19f6aca) is re-published to this repository as non-SNAPSHOT.
+    // (Consider this a temporary workaround until we figure out a better way to handle that)
+    maven { url = uri("https://repo.repsy.io/grabsky/libby") }
 }
 
 // Shading Maven Central dependencies is not needed.
@@ -68,7 +71,7 @@ dependencies {
     // https://github.com/PaperMC/Paper
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
     // https://github.com/AlessioDP/libby
-    shadowImplementation("com.alessiodp.libby:libby-bukkit:2.0.0-SNAPSHOT")
+    shadowImplementation("com.alessiodp.libby:libby-bukkit:2.0.0.dev")
     // https://github.com/faststats-dev/faststats-java
     shadowImplementation("dev.faststats.metrics:bukkit:0.27.1")
 }

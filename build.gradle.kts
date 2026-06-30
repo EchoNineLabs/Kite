@@ -5,13 +5,19 @@ import xyz.jpenilla.runpaper.task.RunServer
 import io.papermc.hangarpublishplugin.model.Platforms
 
 plugins {
-    kotlin("jvm") version "2.4.0"
-    id("com.vanniktech.maven.publish") version "0.36.0"
+    kotlin("jvm") version "2.4.10-RC"
+    // https://github.com/vanniktech/gradle-maven-publish-plugin
+    id("com.vanniktech.maven.publish") version "0.37.0"
+    // https://github.com/jpenilla/run-task
     id("xyz.jpenilla.run-paper") version "3.0.2"
+    // https://github.com/eldoriarpg/plugin-yml
     id("de.eldoria.plugin-yml.paper") version "0.9.0"
+    // https://github.com/modrinth/minotaur
     id("com.modrinth.minotaur") version "2.9.0"
+    // https://github.com/HangarMC/hangar-publish-plugin
     id("io.papermc.hangar-publish-plugin") version "0.1.4"
-    id("com.gradleup.shadow") version "9.4.2"
+    // https://github.com/GradleUp/shadow
+    id("com.gradleup.shadow") version "9.4.3"
 }
 
 private val NAME = "Kite"
@@ -32,7 +38,7 @@ if (System.getenv("CI") != "true") {
     version = "$version+${if (commitHash.length == 7) commitHash else "DEV"}"
 }
 
-val shadowImplementation by configurations.creating
+val shadowImplementation = configurations.create("shadowImplementation")
 
 configurations.implementation {
     extendsFrom(shadowImplementation)
@@ -64,7 +70,7 @@ dependencies {
     // https://github.com/AlessioDP/libby
     shadowImplementation("com.alessiodp.libby:libby-bukkit:2.0.0-SNAPSHOT")
     // https://github.com/faststats-dev/faststats-java
-    shadowImplementation("dev.faststats.metrics:bukkit:0.27.0")
+    shadowImplementation("dev.faststats.metrics:bukkit:0.27.1")
 }
 
 paper {
@@ -85,14 +91,14 @@ runPaper.folia.registerTask()
 tasks {
     // Shared configuration for runServer and runFolia tasks.
     withType(RunServer::class) {
-        minecraftVersion("26.1.1")
+        minecraftVersion("26.1.2")
         downloadPlugins {
-            // Downloading ViaVersion and ViaBackwards for testing on lower (or higher) versions.
-            modrinth("viaversion", "5.7.2")
-            modrinth("viabackwards", "5.7.2")
-            // Downloading MiniPlaceholders 3.1.0. ID must be used because the same version number is used for multiple platforms.
-            modrinth("miniplaceholders", "4zOT6txC")
-            // Downloading PlaceholderAPI with Folia support included starting from 2.11.7.
+            // https://modrinth.com/plugin/viaversion/versions
+            modrinth("viaversion", "5.10.0")
+            modrinth("viabackwards", "5.10.0")
+            // https://modrinth.com/plugin/miniplaceholders/versions
+            modrinth("miniplaceholders", "N2WfJ0ll") // 3.2.0
+            // https://modrinth.com/plugin/placeholderapi/versions
             modrinth("placeholderapi", "2.12.2")
         }
     }
@@ -107,8 +113,8 @@ tasks {
     withType(KotlinCompile::class) {
         compilerOptions {
             jvmTarget = JvmTarget.JVM_21
-            // https://kotlinlang.org/docs/context-parameters.html
-            freeCompilerArgs = listOf("-Xcontext-parameters")
+            // https://kotlinlang.org/docs/context-parameters.html (no longer needed as of Kotlin 2.4.0)
+            // freeCompilerArgs = listOf("-Xcontext-parameters")
         }
     }
     shadowJar {
@@ -123,14 +129,18 @@ tasks.modrinth {
     dependsOn(tasks.modrinthSyncBody)
 }
 
-// Returns the formatted release name.
 tasks.register("getRelease") {
-    print(version)
+    description = "Returns the formatted release name."
+    doLast {
+        print(version)
+    }
 }
 
-// Returns the formatted tag name.
 tasks.register("getTag") {
-    print(version)
+    description = "Returns the formatted tag name."
+    doLast {
+        print(version)
+    }
 }
 
 // Adds specified dependency to 'paperLibrary' and 'api' configurations.

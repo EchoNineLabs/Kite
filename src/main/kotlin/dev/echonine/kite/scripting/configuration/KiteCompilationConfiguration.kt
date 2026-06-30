@@ -63,7 +63,7 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
         updateClasspath(updatedClasspath)
         dependenciesFromClassloader(wholeClasspath = true)
         dependenciesFromClassContext(Kite::class, wholeClasspath = true)
-        compilerOptions("-jvm-target", "21", "-Xcontext-parameters")
+        compilerOptions("-jvm-target", "21")
     }
 
     providedProperties(
@@ -79,7 +79,22 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
             }
             return@beforeParsing context.compilationConfiguration.asSuccess()
         }
-        onAnnotations(Import::class, Dependency::class, Repository::class, Relocation::class, handler = { context ->
+        onAnnotations(Import::class, handler = { context ->
+            val scriptBaseDir = (context.script as? FileBasedScriptSource)?.file?.parentFile
+            val importedSources: MutableList<FileScriptSource> = mutableListOf()
+            // Collecting other .kite.kts files referenced via @Import and adding to an imported sources list.
+            context.collectedData?.get(ScriptCollectedData.collectedAnnotations)?.map { it.annotation }?.takeIf { it.isNotEmpty() }
+                ?.forEach { aImport ->
+                    (aImport as? Import)?.paths?.map { scriptBaseDir?.resolve(it)?.canonicalFile ?: File(it) }?.forEach {
+                        importedSources += FileScriptSource(it)
+                    }
+            }
+            return@onAnnotations ScriptCompilationConfiguration(context.compilationConfiguration) {
+                // Appending imported sources to the script.
+                importedSources.takeUnless { it.isEmpty() }?.let { importScripts.append(it) }
+            }.asSuccess()
+        })
+        onAnnotations(Dependency::class, Repository::class, Relocation::class, handler = { context ->
             // Skipping Kite annotation processor if running outside of server context.
             // At this time, these annotations cannot be easily instructed to work inside IDEA due to technical limitations.
             if (Kite.INSTANCE == null)
@@ -89,8 +104,6 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                 ?.map { it.annotation }?.takeIf { it.isNotEmpty() }
                 // Returning if no annotations were specified.
                 ?: return@onAnnotations context.compilationConfiguration.asSuccess()
-            val scriptBaseDir = (context.script as? FileBasedScriptSource)?.file?.parentFile
-            val importedSources: MutableList<FileScriptSource> = mutableListOf()
             val libsDirectory = Kite.Structure.CACHE_DIR.resolve("${context.compilationConfiguration[displayName]}").resolve("libs")
             // Creating KiteLibraryManager instance. Downloads are placed in scripts' own 'plugins/Kite/cache/{SCRIPT}/libs/' directory because:
             //   (1) this improves script isolation
@@ -119,12 +132,6 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                     }
                     .build()
             }
-            // Collecting other .kite.kts files referenced via @Import and adding to an imported sources list.
-            annotations.filterIsInstance<Import>().forEach { aImport ->
-                aImport.paths.map { scriptBaseDir?.resolve(it)?.canonicalFile ?: File(it) }.forEach {
-                    importedSources += FileScriptSource(it)
-                }
-            }
             return@onAnnotations ScriptCompilationConfiguration(context.compilationConfiguration) {
                 runBlocking {
                     // Loading and/or downloading declared libraries and their dependencies.
@@ -136,8 +143,6 @@ object KiteCompilationConfiguration : ScriptCompilationConfiguration({
                     if (remoteLibraries.isEmpty() == false)
                         dependencies.append(JvmDependency(libraryManager.resolvedPaths.toList()))
                 }
-                // Appending imported sources to the script.
-                importedSources.takeUnless { it.isEmpty() }?.let { importScripts.append(it) }
             }.asSuccess()
         })
     }

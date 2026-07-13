@@ -4,6 +4,7 @@ import dev.echonine.kite.commands.KiteCommands
 import dev.echonine.kite.scripting.ScriptManager
 import dev.echonine.kite.scripting.cache.ImportsCache
 import dev.echonine.kite.util.checkForUpdates
+import dev.faststats.Metrics
 import dev.faststats.bukkit.BukkitContext
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -16,11 +17,7 @@ import java.util.concurrent.TimeUnit
 class Kite : JavaPlugin(), Listener {
 
     internal lateinit var scriptManager: ScriptManager
-
-    internal var fastStats: BukkitContext =
-        BukkitContext.Factory(this, "07d3945a3186e2496be316aaf948c24b")
-            .metrics(dev.faststats.Metrics.Factory::create)
-            .create()
+    internal lateinit var fastStats: BukkitContext
 
     companion object {
         var INSTANCE: Kite? = null
@@ -41,6 +38,9 @@ class Kite : JavaPlugin(), Listener {
         // Registering event listener(s).
         this.server.pluginManager.registerEvents(this, this)
         // Enabling FastStats instance.
+        fastStats = BukkitContext.Factory(this, "07d3945a3186e2496be316aaf948c24b")
+            .metrics(Metrics.Factory::create)
+            .create()
         fastStats.ready()
     }
 

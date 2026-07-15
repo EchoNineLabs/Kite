@@ -5,7 +5,7 @@ import xyz.jpenilla.runpaper.task.RunServer
 import io.papermc.hangarpublishplugin.model.Platforms
 
 plugins {
-    kotlin("jvm") version "2.4.10-RC2"
+    kotlin("jvm") version "2.4.10"
     // https://github.com/vanniktech/gradle-maven-publish-plugin
     id("com.vanniktech.maven.publish") version "0.37.0"
     // https://github.com/jpenilla/run-task

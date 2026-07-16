@@ -17,7 +17,7 @@ plugins {
     // https://github.com/HangarMC/hangar-publish-plugin
     id("io.papermc.hangar-publish-plugin") version "0.1.4"
     // https://github.com/GradleUp/shadow
-    id("com.gradleup.shadow") version "9.5.1"
+    id("com.gradleup.shadow") version "9.6.0"
 }
 
 private val NAME = "Kite"

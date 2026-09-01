@@ -9,7 +9,7 @@ plugins {
     // https://github.com/vanniktech/gradle-maven-publish-plugin
     id("com.vanniktech.maven.publish") version "0.37.0"
     // https://github.com/jpenilla/run-task
-    id("xyz.jpenilla.run-paper") version "3.0.2"
+    id("xyz.jpenilla.run-paper") version "3.1.0"
     // https://github.com/eldoriarpg/plugin-yml
     id("de.eldoria.plugin-yml.paper") version "0.9.0"
     // https://github.com/modrinth/minotaur

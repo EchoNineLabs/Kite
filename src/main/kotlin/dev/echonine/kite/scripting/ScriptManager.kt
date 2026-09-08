@@ -222,15 +222,15 @@ internal class ScriptManager(val plugin: Kite) {
     /**
      * Unloads a specified script by its name. Returns `false` if no such script is currently loaded.
      */
-    suspend fun unload(name: String): Boolean {
+    suspend fun unload(name: String, useGlobalRegionScheduler: Boolean = true): Boolean {
         return loadedScripts[name]?.let {
-            return unload(it)
+            return unload(it, useGlobalRegionScheduler)
         } ?: false
     }
 
-    // Unloads specified script by it's context.
-    private suspend fun unload(script: ScriptContext): Boolean = suspendCancellableCoroutine { coroutine ->
-        plugin.server.globalRegionScheduler.execute(plugin, {
+    // Unloads specified script by its context.
+    private suspend fun unload(script: ScriptContext, useGlobalRegionScheduler: Boolean = true): Boolean = suspendCancellableCoroutine { coroutine ->
+        wrapTask(useGlobalRegionScheduler) {
             try {
                 script.runOnUnload()
             } catch (thr: Throwable) {
@@ -240,7 +240,15 @@ internal class ScriptManager(val plugin: Kite) {
             loadedScripts.remove(script.name)
             // Resuming the coroutine.
             coroutine.resume(true)
-        })
+        }
+    }
+
+    private fun wrapTask(useGlobalRegionScheduler: Boolean, func: () -> Any) {
+        if (!useGlobalRegionScheduler)
+            func.invoke()
+        else plugin.server.globalRegionScheduler.execute(plugin) {
+            func.invoke()
+        }
     }
 
 }

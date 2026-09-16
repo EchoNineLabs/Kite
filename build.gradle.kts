@@ -13,7 +13,7 @@ plugins {
     // https://github.com/eldoriarpg/plugin-yml
     id("de.eldoria.plugin-yml.paper") version "0.9.0"
     // https://github.com/modrinth/minotaur
-    id("com.modrinth.minotaur") version "2.9.0"
+    id("com.modrinth.minotaur") version "2.10.0"
     // https://github.com/HangarMC/hangar-publish-plugin
     id("io.papermc.hangar-publish-plugin") version "0.1.4"
     // https://github.com/GradleUp/shadow

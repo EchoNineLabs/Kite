@@ -1,4 +1,3 @@
-# Kite
 <a href=https://modrinth.com/plugin/kite><img alt="modrinth" height="54" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/modrinth_vector.svg"></a>
 <a href=https://hangar.papermc.io/echonine/kite><img alt="hangar" height="54" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/hangar_vector.svg"></a>
 <a href=https://discord.gg/xYcjBKqkDz><img alt="discord-plural" height="54" src="https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/social/discord-plural_vector.svg"></a>
@@ -9,7 +8,7 @@ Designed for small and simple tasks and serves as a much more powerful alternati
 
 <br>
 
-![Example](https://cdn.modrinth.com/data/cached_images/f144745348dc82a9dcb6463a3c3fd433b7b3446c.png)
+![Example](https://cdn.modrinth.com/data/cached_images/c5c7c49a56889978b284b52388c8d3b5e2fbb16d.png)
 
 <br>
 

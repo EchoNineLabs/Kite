@@ -23,7 +23,7 @@ plugins {
 private val NAME = "Kite"
 private val DESCRIPTION = "A lightweight Kotlin scripting plugin"
 private val SUPPORTED_VERSIONS = listOf(
-    "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10", "1.21.11", "26.1", "26.1.1", "26.1.2", "26.2"
+    "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10", "1.21.11", "26.1", "26.1.1", "26.1.2", "26.2", "26.3"
 )
 
 group = "dev.echonine.kite"
@@ -44,7 +44,7 @@ configurations.implementation {
     extendsFrom(shadowImplementation)
 }
 
-tasks.named("runServer") {
+tasks.withType<RunServer>().configureEach {
     dependsOn(tasks.named("jar"))
 }
 
@@ -97,12 +97,12 @@ tasks {
         minecraftVersion("26.1.2")
         downloadPlugins {
             // https://modrinth.com/plugin/viaversion/versions
-            modrinth("viaversion", "5.10.0")
-            modrinth("viabackwards", "5.10.0")
+            modrinth("viaversion", "5.12.0")
+            modrinth("viabackwards", "5.12.0")
             // https://modrinth.com/plugin/miniplaceholders/versions
             modrinth("miniplaceholders", "N2WfJ0ll") // 3.2.0
             // https://modrinth.com/plugin/placeholderapi/versions
-            modrinth("placeholderapi", "2.12.2")
+            modrinth("placeholderapi", "2.12.3")
         }
     }
     // Configuring 'runServer' task to use JetBrains' JDK 21 for expanded hot-swap features.

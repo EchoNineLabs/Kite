@@ -6,6 +6,7 @@ import dev.echonine.kite.scripting.cache.ImportsCache
 import dev.echonine.kite.util.checkForUpdates
 import dev.faststats.Metrics
 import dev.faststats.bukkit.BukkitContext
+import kotlinx.coroutines.runBlocking
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.server.ServerLoadEvent
@@ -45,6 +46,12 @@ class Kite : JavaPlugin(), Listener {
     }
 
     override fun onDisable() {
+        // Unloading all scripts.
+        runBlocking {
+            scriptManager.getLoadedScripts().keys.forEach {
+                scriptManager.unload(it, false)
+            }
+        }
         // Shutting down FastStats instance.
         fastStats.shutdown()
     }

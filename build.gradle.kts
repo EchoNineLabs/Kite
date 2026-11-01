@@ -94,11 +94,11 @@ runPaper.folia.registerTask()
 tasks {
     // Shared configuration for runServer and runFolia tasks.
     withType(RunServer::class) {
-        minecraftVersion("26.1.2")
+        minecraftVersion("26.3")
         downloadPlugins {
             // https://modrinth.com/plugin/viaversion/versions
-            modrinth("viaversion", "5.12.0")
-            modrinth("viabackwards", "5.12.0")
+            modrinth("viaversion", "5.12.2")
+            modrinth("viabackwards", "5.12.2")
             // https://modrinth.com/plugin/miniplaceholders/versions
             modrinth("miniplaceholders", "N2WfJ0ll") // 3.2.0
             // https://modrinth.com/plugin/placeholderapi/versions
